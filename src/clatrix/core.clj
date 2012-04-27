@@ -4,16 +4,29 @@
   (:import [org.jblas DoubleMatrix Eigen Solve Singular MatrixFunctions]
            [java.io Writer]))
 
-;;; A wrapper object over DoubleMatrix
-;;;
+;;; Clatrix is a fast matrix library for Clojure written atop JBlas'
+;;; ATLAS/LAPACK bindings. It's not intended to be the alpha and omega
+;;; of linear algebra hosted on Clojure, but it should provide most of
+;;; the basics for enabling more scientific/mathematical computation.
+
+;;; # The clatrix matrix
+
+;;; Matrices are implemented as a thin wrapper over JBlas'
+;;; `DoubleMatrix` class. The wrapper is useful to program metadata
+;;; and protocols into the Matrix implementation and also to hide the
+;;; underlying Java methods. It's not hard to access them (they're
+;;; available through the `:me` keyword), but their use is clearly
+;;; dissuaded.
 (defrecord Matrix [^DoubleMatrix me]
   Object
   (toString [^Matrix mat]
     (str (list 'matrix
                (vec (map vec (vec (.toArray2 (:me mat)))))))))
 
-;;; Java interop
+;;; # Java interop
 ;;; 
+;;; Clatrix lifts a lot of methods directly out of JBlas. Here are a
+;;; few convenience macros used for the thinnest parts of the wrapper.
 (defmacro promote-cfun* [defname name fname]
   (let [n (gensym)
         m (gensym)]
@@ -25,14 +38,19 @@
   (let [m (gensym)]
     `(~defname ~name [^Matrix ~m] (~fname (:me ~m)))))
 
-;;; Bootstrap the basics
-;;; 
+;;; # Basics of matrix objects
+;;;
+;;; In linear algebra, matrices are two-dimensional arrays of
+;;; doubles. The object `Matrix` is our particular instantiation.
+
 (defn matrix? [m]
   (isa? (class m) Matrix))
-(defn get [^Matrix m ^long r ^long c]
-  (.get (:me m) r c))
-(defn set [^Matrix m ^long r ^long c ^double e]
-  (.put (:me m) r c e))
+
+;;; The most fundamental question about a matrix is its size. This
+;;; also defines a number of other ideas such as whether a matrix is a
+;;; column or row vector. Columns are default, though, by convention,
+;;; matrices are sometimes represented as nested seqs in row-major
+;;; order.
 
 (promote-mfun* defn- ncols .columns)
 (promote-mfun* defn- nrows .rows)
@@ -42,31 +60,68 @@
 (defn column? [^Matrix m] (== 1 (second (size m))))
 (defn square? [^Matrix m] (reduce == (size m)))
 
-;;; Matrix creation
+;;; The most basic matrix operation is elementwise getting and
+;;; setting; setting should be dissuaded as well for a Clojure
+;;; wrapper, but it's too useful to hide.
+
+(defn get [^Matrix m ^long r ^long c]
+  (.get (:me m) r c))
+(defn set [^Matrix m ^long r ^long c ^double e]
+  (.put (:me m) r c e))
+
+;;; Already this is sufficient to get some algebraic matrix properties
+
+(defn trace
+  "Computes the trace of a matrix, the sum of its diagonal elements."
+  [^Matrix mat]
+  (if (square? mat)
+    (let [[n _] (size mat)]
+      (reduce #(+ (get mat %2 %2) %1) 0 (range n)))
+    (throw+ {:error "Cannot take trace of non-square matrix."})))
+
+;;; We can also map the entire matrices back into Clojure data
+;;; structures like 2-nested vectors.
+
+(defn dense
+  "Converts a matrix object into a lazy sequence of its element,
+  row-major."
+  [^Matrix m]
+  (vec (map vec (vec (.toArray2 (:me m))))))
+
+(defn as-vec
+  "Converts a matrix object into a lazy sequence of its elements,
+  row-major. Treats `vector?` type matrices specially, though, and
+  flattening the return to a single vector."
+  [^Matrix m]
+  (if (vector? m)
+    (vec (.toArray (:me m)))
+    (vec (map vec (vec (.toArray2 (:me m)))))))
+
+;;; # Matrix creation
 ;;;
+;;; Matrices can be created from a number of simple specifications,
+;;; such as (1) direct coercions, (2) element-constant matrices and
+;;; vectors, and (3) identity matrices.
 
-;;; Direct imports
-(defn column [^doubles seq]
+(defn column
+  "Creates a column Matrix from a seq of its elements."
+  [^doubles seq]
   (Matrix. (DoubleMatrix. (into-array Double/TYPE seq))))
-(defn matrix [seq-of-seqs]
-  (Matrix. (DoubleMatrix. (into-array (map #(into-array Double/TYPE %) seq-of-seqs)))))
 
-;;; Create a constant matrix of a particular size.
-(defn constant
-  ([^long n ^double c] 
-     (Matrix.
-      (doto (DoubleMatrix/ones n)
-        (.muli c))))
-  ([^long n ^long m ^double c] 
-     (Matrix.
-      (doto (DoubleMatrix/ones n m) 
-        (.muli c)))))
+(defn matrix
+  "Creates a Matrix from a seq of seqs, specifying the matrix in
+  row-major order. The length of each seq must be identical."
+  [seq-of-seqs]
+  (let [lengths (map count seq-of-seqs)
+        l0      (first lengths)]
+    (if (every? (partial = l0) lengths)
+      (Matrix. (DoubleMatrix. (into-array (map #(into-array Double/TYPE %) seq-of-seqs))))
+      (throw+ {:error "Cannot create a ragged matrix."}))))
 
-;;; Specific kinds of constant matrices and vectors
-(promote-cfun* defn  ones DoubleMatrix/ones)
-(promote-cfun* defn- zeros DoubleMatrix/zeros)
-
-(defn diag [seq-or-matrix]
+(defn diag
+  "Creates a diagonal matrix from a seq or pulls the diagonal of a
+  matrix out as a seq."
+  [seq-or-matrix]
   (if (matrix? seq-or-matrix)
     (let [mat ^Matrix seq-or-matrix]
       ;; We'll extract largest diagonals from non-square matrices
@@ -76,12 +131,29 @@
     (let [di ^doubles (seq seq-or-matrix)]
       (Matrix. (DoubleMatrix/diag (column di))))))
 
-(defn id [^long n] (Matrix. (DoubleMatrix/eye n)))
+(defn constant
+  "Create a column or matrix filled with a constant value."
+  ([^long n ^double c] 
+     (Matrix.
+      (doto (DoubleMatrix/ones n)
+        (.muli c))))
+  ([^long n ^long m ^double c] 
+     (Matrix.
+      (doto (DoubleMatrix/ones n m) 
+        (.muli c)))))
 
-;;; Matrix transformations
-(defn t [^Matrix mat] (Matrix. (.transpose (:me mat))))
+(promote-cfun* defn  ones DoubleMatrix/ones)
+(promote-cfun* defn- zeros DoubleMatrix/zeros)
 
-;;; Random matrices
+(defn id
+  "The `n`x`n` identity matrix."
+  [^long n] (Matrix. (DoubleMatrix/eye n)))
+
+;;; ## Random matrices
+;;;
+;;; It's also useful to generate random matrices. These are
+;;; elementwise independent Unif(0,1) and normal.
+
 (promote-cfun* defn  rand   DoubleMatrix/rand)
 (promote-cfun* defn- randn* DoubleMatrix/randn) 
 
@@ -99,8 +171,16 @@
   ([^long n ^long m] (randn* n m))
   ([^long n] (randn* n)))
 
-;;; Stacking
+;;; ## Element algebra
 ;;;
+;;; Matrices can also be permuted, flipped, transposed, stacked, and
+;;; split to form more complex matrices. This "element algebra" is a
+;;; powerful way of building more complex matrices.
+
+(defn t
+  "The transpose of a matrix."
+  [^Matrix mat] (Matrix. (.transpose (:me mat))))
+
 (defn hstack [& vec-seq]
   (let [row-counts (map #(first (size %)) vec-seq)
         rows (first row-counts)]
@@ -117,9 +197,9 @@
                        (:me (first vec-seq))
                        (rest vec-seq))))))
 
-;;; Matrix queries
-;;;
 (defn rows
+  "Breaks a matrix into its constituent rows. By default, all the rows
+are returned in normal order, but indices can also be specified."
   ([^Matrix mat]
      (let [[n m] (size mat)]
        (rows mat (range n))))
@@ -127,22 +207,166 @@
      (map #(Matrix. (.getRow (:me m) %)) idxs)))
 
 (defn cols
+  "Breaks a matrix into its constituent columns. By default, all the
+columns are returned in normal order, but indices can also be
+specified."
   ([^Matrix mat]
      (let [[n m] (size mat)]
        (cols mat (range m))))
   ([^Matrix m ^longs idxs]
      (map #(Matrix. (.getColumn (:me m) %)) idxs)))
 
-(defn as-vec
-  "Converts a matrix object into a lazy sequence of its elements, row-major."
-  [^Matrix m]
-  (if (vector? m)
-    (vec (.toArray (:me m)))
-    (vec (map vec (vec (.toArray2 (:me m)))))))
+(defn permute
+  "Permutes the rows and the columns of a matrix"
+  [^Matrix mat & {:keys [rowspec colspec]}]
+  (let [[n m] (size mat)]
+    (cond (and rowspec (some #(> % (dec n)) rowspec))
+          (throw+ {:error "Row index out of bounds" :num-rows n :rowspec rowspec})
+          (and colspec (some #(> % (dec m)) colspec))
+          (throw+ {:error "Column index out of bounds" :num-columns n :colspec rowspec})
 
-;;; Slicing
+          :else
+          (do
+            (let [mat1 (if rowspec
+                         (apply vstack (rows mat rowspec))
+                         mat)
+                  mat2 (if colspec
+                         (apply hstack (cols mat1 colspec))
+                         mat1)]
+              mat2)))))
+
+;;; ### Block matrices
 ;;;
-(defn- iswild [sym] (= (str sym) "_"))
+;;; Block matrix syntax is a very convenient way of building larger
+;;; matrices from smaller ones. Clatrix implements block matrix syntax
+;;; in a convenient manner.
+;;;
+;;;     (block [[A 1 1 0]
+;;;             [0 B . .]
+;;;             [_ _ C .]
+;;;             [_ _ D E]])
+;;;
+;;; Clatrix uses size constraint propagation to determine the proper
+;;; sizes of the constant and 0 matrices.
+
+(defn- iswild
+  "Defines a wildcard symbol, used in `block`, `slice`, and `slices`."
+  [sym]
+  ;; This is a sort of silly way to do it, but I can't get the regex
+  ;; to work for both '_ and #'user/_
+  (let [name1 (second (re-find #"/(.+)" (str sym)))
+        name2 (str sym)]
+    (or (= name1 "_")
+        (= name1 ".")
+        (= name1 "*")
+        (= name2 "_")
+        (= name2 ".")
+        (= name2 "*"))))
+
+(defn- make-constr
+  "Subfunction for `block`. Makes a size-constraint hash for building
+  block matrices."
+  [e]
+  (if (matrix? e)
+    {:matrix e
+     :rows (first (size e))
+     :cols (second (size e))}
+    {:constant e}))
+
+(defn- update-hash-with-constr
+  "Examines a new constraint against an old block-hash, `hsh`. Updates the
+  hash at position [i j] to respect the current constraint `constr`
+  according to `key`"
+  [hsh constr i j key]
+  (let [{n key} constr
+        old (hsh [i j])]
+    (if (key old)
+      (if (not= (key old) n) ;the constraint doesn't match the hash, uh oh
+        (throw+ {:error "Block matrix diagram sizes are inconsistent."
+                 :type :constraint-error
+                 :location [i j]})
+        hsh)
+      ;; if there isn't an old key then we can fix that constraint now
+      (assoc hsh [i j]
+             (assoc old key n)))))
+
+(defn- block-fn
+  "Creates a block matrix. Any number `n` represents the all-`n`
+  matrix of an appropriate size to make the matrix."
+  [matrices]
+  ;; We must do size-constraint propagation along the rows and columns
+  ;; of the block-diagram in order to (a) ensure that the input isn't
+  ;; in error and (b) find the proper sizes for the constant matrices.
+  (let [n       (count matrices)
+        lengths (map count matrices)
+        m       (first lengths)]
+    (if (every? (partial == m) lengths)
+      
+      ;; Build the constraints map
+      (let [constrs (map #(map make-constr %) matrices)
+            indices (for [i (range n) j (range m)] [i j])
+            ;; The initial hash map contains what we know before
+            ;; constraint propagation.
+            init-map (reduce (fn [hsh [i j]]
+                               (assoc hsh [i j]
+                                      (nth (nth constrs i) j)))
+                             (hash-map) indices)
+            ;; Walk over the index set and propagate all the constraints
+            ;; over each row and column
+            constraint-map
+            (reduce
+             (fn [hash [i j]]
+               (let [constr (nth (nth constrs i) j)]
+                 (if (or (:rows constr) (:cols constr))
+                   ;; Look up and to the left for constraint violations,
+                   ;; locking in constraints if they don't already exist
+                   (reduce #(update-hash-with-constr %1 constr i %2 :rows)
+                           (reduce #(update-hash-with-constr %1 constr %2 j :cols)
+                                   hash (range n))
+                           (range m))
+                   hash))) init-map indices)]
+        ;; Use the constraint map to build the final matrix
+        (apply vstack
+               (for [i (range n)]
+                 (apply hstack
+                        (for [j (range m)]
+                          (let [constr (constraint-map [i j])]
+                            (if (:matrix constr)
+                              (:matrix constr)
+                              ;; Constants are assumed to be 1x1
+                              ;; unless otherwise constrained
+                              (constant (:rows constr 1)
+                                        (:cols constr 1)
+                                        (:constant constr)))))))))
+      (throw+ {:error "Block matrices cannot be ragged."}))))
+
+(defmacro block
+  "Creates a block matrix using normal block matrix syntax written as
+  a row-major ordered vector of vectors. Each entry in the
+  specification can be a `Matrix`, a number, or a null symbol (either
+  `.` or `_`). Numbers are translated as constant matrices of the
+  appropriate size to complete the block matrix. Null symbols are
+  considered as constant 0 matrices and are also automatically
+  constrained to be the proper size. Any integers which do not share a
+  row or a column with a larger matrix are assumed to be 1x1 sized."
+  [blockspec]
+  `(block-fn ~(vec (map #(vec (map (fn [e] (if (iswild e) 0 e)) %)) blockspec))))
+
+
+;;; # Slicing 
+;;;
+;;; As a more convenient API than looping over `get` and `set`, we
+;;; have slice notation. This uses wildcard symbols (like in `block`)
+;;; in order to represent full index sets.
+;;;
+;;;     (slice A _ 5) ; ==> the whole 5th column
+;;;     (slice A 4 5) ; ==> (get A 4 5)
+;;;
+;;; The slice macro also overloads setters. For instance
+;;;
+;;;     (slice A _ 1 (column (range 10)))
+;;;
+;;; replaces the 2nd column of `A` with `[0 1 2 3 4 5 6 7 8 9]`.
 
 (defn- slicer
   ([^Matrix matrix rowspec colspec]
@@ -175,15 +399,19 @@ location."
   [^Matrix matrix rowspec colspec & values?]
   `(as-vec ~(apply slicer matrix rowspec colspec values?)))
 
-(defn trace
-  [^Matrix mat]
-  (if (square? mat)
-    (let [[n _] (size mat)]
-      (reduce #(+ (slice mat %2 %2) %1) 0 (range n)))
-    (throw+ {:error "Cannot take trace of non-square matrix."})))
-
-;;; Hinting
+;;; # Hinting
 ;;;
+;;; Many more complex matrix operations can be specialized for certain
+;;; kinds of matrices. In particular, symmetric and positive definite
+;;; matrices are much easier to handle. Clatrix doesn't natrually know
+;;; which matrices have these special properties, but hinting
+;;; functions can be used to assert that certain matrices are indeed
+;;; symmetric or positive definite.
+;;;
+;;; Most operations in Clatrix create new objects, thus the assertions
+;;; do not propagate. If they are, however, they can be removed by
+;;; asserting the matrix `arbitrary`.
+
 (defn symmetric
   "Asserts that a matrix is symmetric."
   [^Matrix m] (with-meta m {:symmetric true}))
@@ -206,6 +434,9 @@ location."
   (if (or (symmetric? m) (= (t m) m))
     (symmetric m)
     (with-meta m {:symmetric false})))
+
+;;; # Linear algebra
+;;;
 
 (defn solve
   "Solves the equation AX = B for X. Flags include :pd :positive
@@ -259,7 +490,7 @@ location."
           m))
       m)))
 
-;;; Viewing
+;;; # Viewing the matrices
 ;;;
 
 (defmethod print-method Matrix [mat ^Writer w]
