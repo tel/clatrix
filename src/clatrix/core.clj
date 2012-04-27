@@ -48,15 +48,15 @@
 ;;; In linear algebra, matrices are two-dimensional arrays of
 ;;; doubles. The object `Matrix` is our particular instantiation.
 
-(defn matrix? [m]
-  (isa? (class m) Matrix))
+(defn matrix?
+  "`matrix?` tests whether an object is a `Matrix` object."
+  [m] (isa? (class m) Matrix))
 
 ;;; The most fundamental question about a matrix is its size. This
 ;;; also defines a number of other ideas such as whether a matrix is a
 ;;; column or row vector. Columns are default, though, by convention,
 ;;; matrices are sometimes represented as nested seqs in row-major
 ;;; order.
-
 (promote-mfun* defn- ncols .columns)
 (promote-mfun* defn- nrows .rows)
 (defn size    [^Matrix m] [(nrows m) (ncols m)])
@@ -68,7 +68,6 @@
 ;;; The most basic matrix operation is elementwise getting and
 ;;; setting; setting should be dissuaded as well for a Clojure
 ;;; wrapper, but it's too useful to hide.
-
 (defn get [^Matrix m ^long r ^long c]
   (dotom .get m r c))
 (defn set [^Matrix m ^long r ^long c ^double e]
@@ -139,6 +138,8 @@
     (let [di ^doubles (seq seq-or-matrix)]
       (Matrix. (DoubleMatrix/diag (DoubleMatrix. ^doubles (into-array Double/TYPE di)))))))
 
+(promote-cfun* defn  ones DoubleMatrix/ones)
+(promote-cfun* defn- zeros DoubleMatrix/zeros)
 (defn constant
   "`constant` creates a column or matrix with every element equal to
    the same constant value."
@@ -150,9 +151,6 @@
      (Matrix.
       (doto (DoubleMatrix/ones n m) 
         (.muli c)))))
-
-(promote-cfun* defn  ones DoubleMatrix/ones)
-(promote-cfun* defn- zeros DoubleMatrix/zeros)
 
 (defn id
   "`(id n)` is the `n`x`n` identity matrix."
