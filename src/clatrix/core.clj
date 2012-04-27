@@ -446,7 +446,7 @@
 (defmacro slice
   "`slice` is the primary function for accessing and modifying a
    matrix at the single row, column, entry, or full matrix level. The
-   row/colspec variables are either an integer or the atom '_
+   row/colspec variables are either an integer or the atom `'_`
    signifying that the index should run over all possible values for
    the row or column index. If a fourth argument is passed it is
    assumed to be a size-conforming entry, row, or matrix to be
