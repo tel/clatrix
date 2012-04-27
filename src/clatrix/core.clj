@@ -28,8 +28,6 @@
 (defmacro dotom [name m & args]
   `(~name ^DoubleMatrix (:me ~m) ~@args))
 
-(defn- me [^Matrix m] ^DoubleMatrix (:me m))
-
 ;;; # Java interop
 ;;; 
 ;;; Clatrix lifts a lot of methods directly out of JBlas. Here are a
@@ -236,8 +234,8 @@
     (if (every? (partial == rows) row-counts)
       (Matrix. (reduce #(DoubleMatrix/concatHorizontally
                          ^DoubleMatrix %1
-                         ^DoubleMatrix (me %2))
-                       (me (first vec-seq))
+                         ^DoubleMatrix (:me %2))
+                       (:me (first vec-seq))
                        (rest vec-seq))))))
 
 (defn vstack
@@ -249,8 +247,8 @@
     (if (every? (partial == cols) col-counts)
       (Matrix. (reduce #(DoubleMatrix/concatVertically
                          ^DoubleMatrix %1
-                         ^DoubleMatrix (me %2))
-                       (me (first vec-seq))
+                         ^DoubleMatrix (:me %2))
+                       (:me (first vec-seq))
                        (rest vec-seq))))))
 
 (defn rows
@@ -534,12 +532,12 @@
   optimized LAPACK routines."
   [^Matrix A ^Matrix B]
   (cond
-   (positive? A)  (Solve/solvePositive ^DoubleMatrix (me A)
-                                       ^DoubleMatrix (me B))
-   (symmetric? A) (Solve/solveSymmetric ^DoubleMatrix (me A)
-                                        ^DoubleMatrix (me B))
-   :else          (Solve/solve ^DoubleMatrix (me A)
-                               ^DoubleMatrix (me B))))
+   (positive? A)  (Solve/solvePositive ^DoubleMatrix (:me A)
+                                       ^DoubleMatrix (:me B))
+   (symmetric? A) (Solve/solveSymmetric ^DoubleMatrix (:me A)
+                                        ^DoubleMatrix (:me B))
+   :else          (Solve/solve ^DoubleMatrix (:me A)
+                               ^DoubleMatrix (:me B))))
 
 (defn eigen
   "`eigen` computes the eigensystem (or generalized eigensystem) for a
@@ -567,7 +565,7 @@
                            out {:vectors rvecs
                                 :values  rvals}]
                        (if (some (partial not= 0.0) ivals)
-                         (merge out
+                         (:merge out
                                 {:ivectors ivecs
                                  :ivalues  ivals})
                          out))))
@@ -577,8 +575,8 @@
        (if (and (symmetric? A) (symmetric? B))
          (let [[vecs vals]
                (map #(Matrix. %)
-                    (seq (Eigen/symmetricGeneralizedEigenvectors ^DoubleMatrix (me A)
-                                                                 ^DoubleMatrix (me B))))]
+                    (seq (Eigen/symmetricGeneralizedEigenvectors ^DoubleMatrix (:me A)
+                                                                 ^DoubleMatrix (:me B))))]
            {:vectors vecs :values (as-vec vals)})
          (throw+ {:error "Cannot do generalized eigensystem for non-symmetric matrices."})))))
 
