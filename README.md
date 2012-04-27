@@ -1,15 +1,34 @@
-# clatrix
+# Clatrix matrix
 
-I'm an app. Or maybe I'm a library? I haven't decided yet. 
-
-The choice is up to you!
+A stupid name for a smart matrix library, because Clojure needs smart
+matrices. Being implemented as a thin wrapper around the native BLAS
+hooks of [JBlas](http://github.com/mikiobraun/jblas) gives it
+speed. Being implemented in Clojure makes it clever.
 
 ## Usage
 
-FIXME
+For now, generate the documentation using `lein marg` and take a
+look. More details forthcoming.
 
 ## License
 
-Copyright © 2012 FIXME
+Copyright © 2012 Joseph Abrahamson
 
-Distributed under the Eclipse Public License, the same as Clojure.
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

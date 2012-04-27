@@ -1,7 +1,7 @@
 (ns clatrix.core
   (:refer-clojure :exclude [get set rand vector?])
   (:use [slingshot.slingshot :only [throw+]])
-  (:import [org.jblas DoubleMatrix Eigen Solve Singular MatrixFunctions]
+  (:import [org.jblas DoubleMatrix Decompose Eigen Solve Singular MatrixFunctions]
            [java.io Writer]))
 
 ;;; Clatrix is a fast matrix library for Clojure written atop JBlas'
@@ -69,10 +69,11 @@
 (defn set [^Matrix m ^long r ^long c ^double e]
   (.put (:me m) r c e))
 
-;;; Already this is sufficient to get some algebraic matrix properties
+;;; Already this is sufficient to get some algebraic matrix
+;;; properties, such as
 
 (defn trace
-  "Computes the trace of a matrix, the sum of its diagonal elements."
+  "`trace` computes the trace of a matrix, the sum of its diagonal elements."
   [^Matrix mat]
   (if (square? mat)
     (let [[n _] (size mat)]
@@ -83,15 +84,14 @@
 ;;; structures like 2-nested vectors.
 
 (defn dense
-  "Converts a matrix object into a lazy sequence of its element,
-  row-major."
-  [^Matrix m]
+  "`dense` converts a matrix object into a seq-of-seqs of its elements
+  in row-major order."  [^Matrix m]
   (vec (map vec (vec (.toArray2 (:me m))))))
 
 (defn as-vec
-  "Converts a matrix object into a lazy sequence of its elements,
-  row-major. Treats `vector?` type matrices specially, though, and
-  flattening the return to a single vector."
+  "`as-vec` converts a matrix object into a seq-of-seqs of its
+  elements in row-major order. Treats `vector?` type matrices
+  differently, though, flattening the return seq to a single vector."
   [^Matrix m]
   (if (vector? m)
     (vec (.toArray (:me m)))
@@ -104,13 +104,14 @@
 ;;; vectors, and (3) identity matrices.
 
 (defn column
-  "Creates a column Matrix from a seq of its elements."
+  "`column` coerces a seq of numbers to a column `Matrix`."
   [^doubles seq]
   (Matrix. (DoubleMatrix. (into-array Double/TYPE seq))))
 
 (defn matrix
-  "Creates a Matrix from a seq of seqs, specifying the matrix in
-  row-major order. The length of each seq must be identical."
+  "`matrix` creates a `Matrix` from a seq of seqs, specifying the
+  matrix in row-major order. The length of each seq must be
+  identical or an error is throw."
   [seq-of-seqs]
   (let [lengths (map count seq-of-seqs)
         l0      (first lengths)]
@@ -119,8 +120,8 @@
       (throw+ {:error "Cannot create a ragged matrix."}))))
 
 (defn diag
-  "Creates a diagonal matrix from a seq or pulls the diagonal of a
-  matrix out as a seq."
+  "`diag` creates a diagonal matrix from a seq of numbers or extracts
+  the diagonal of a `Matrix` as a seq."
   [seq-or-matrix]
   (if (matrix? seq-or-matrix)
     (let [mat ^Matrix seq-or-matrix]
@@ -129,10 +130,11 @@
       (let [n (apply min (size mat))]
         (map #(get mat % %) (range n))))
     (let [di ^doubles (seq seq-or-matrix)]
-      (Matrix. (DoubleMatrix/diag (column di))))))
+      (Matrix. (DoubleMatrix/diag (DoubleMatrix. (into-array Double/TYPE di)))))))
 
 (defn constant
-  "Create a column or matrix filled with a constant value."
+  "`constant` creates a column or matrix with every element equal to
+   the same constant value."
   ([^long n ^double c] 
      (Matrix.
       (doto (DoubleMatrix/ones n)
@@ -146,7 +148,7 @@
 (promote-cfun* defn- zeros DoubleMatrix/zeros)
 
 (defn id
-  "The `n`x`n` identity matrix."
+  "`(id n)` is the `n`x`n` identity matrix."
   [^long n] (Matrix. (DoubleMatrix/eye n)))
 
 ;;; ## Random matrices
@@ -158,6 +160,9 @@
 (promote-cfun* defn- randn* DoubleMatrix/randn) 
 
 (defn rnorm
+  "`(rnorm mu sigma n m)` is an `n`x`m` `Matrix` with normally
+   distributed random elements with mean `mu` and standard deviation
+   `sigma`."
   ([^double mu ^double sigma ^long n ^long m]
      (Matrix.
       (doto (:me (randn* n m))
@@ -178,18 +183,28 @@
 ;;; powerful way of building more complex matrices.
 
 (defn t
-  "The transpose of a matrix."
+  "`(t A)` is the transpose of `A`."
   [^Matrix mat] (Matrix. (.transpose (:me mat))))
 
-(defn hstack [& vec-seq]
-  (let [row-counts (map #(first (size %)) vec-seq)
+(defn hstack
+  "`hstack` concatenates a number of matrices by aligning them
+  horizontally. Each matrix must have the same number of
+  rows. Optionally, the any entry may be a seq, which is spliced into
+  the arguments list via `flatten`, somewhat like the final argument
+  to `apply`."
+  [& vec-seq]
+  (let [vec-seq (flatten vec-seq)
+        row-counts (map #(first (size %)) vec-seq)
         rows (first row-counts)]
     (if (every? (partial == rows) row-counts)
       (Matrix. (reduce #(DoubleMatrix/concatHorizontally %1 (:me %2))
                        (:me (first vec-seq))
                        (rest vec-seq))))))
 
-(defn vstack [& vec-seq]
+(defn vstack
+  "`vstack` is vertical concatenation in the style of `hstack`. See
+  `hstack` documentation for more detail."
+  [& vec-seq]
   (let [col-counts (map #(second (size %)) vec-seq)
         cols (first col-counts)]
     (if (every? (partial == cols) col-counts)
@@ -198,8 +213,9 @@
                        (rest vec-seq))))))
 
 (defn rows
-  "Breaks a matrix into its constituent rows. By default, all the rows
-are returned in normal order, but indices can also be specified."
+  "`rows` explodes a `Matrix` into its constituent rows. By default,
+   all the rows are returned in normal order, but particular indices
+   can be specified by the second argument."
   ([^Matrix mat]
      (let [[n m] (size mat)]
        (rows mat (range n))))
@@ -207,33 +223,34 @@ are returned in normal order, but indices can also be specified."
      (map #(Matrix. (.getRow (:me m) %)) idxs)))
 
 (defn cols
-  "Breaks a matrix into its constituent columns. By default, all the
-columns are returned in normal order, but indices can also be
-specified."
+  "`cols` explodes a `Matrix` into its constituent columns in the
+   style of `rows`. See `rows` documentation for more detail."
   ([^Matrix mat]
      (let [[n m] (size mat)]
        (cols mat (range m))))
   ([^Matrix m ^longs idxs]
      (map #(Matrix. (.getColumn (:me m) %)) idxs)))
 
+;;; From this we also get generalized matrix permutations almost for free.
+
+(defn- permute-rows [^Matrix mat rowspec]
+  (if rowspec (apply vstack (rows mat rowspec)) mat))
+
+(defn- permute-cols [^Matrix mat colspec]
+  (if colspec (apply hstack (cols mat colspec)) mat))
+
 (defn permute
-  "Permutes the rows and the columns of a matrix"
+  "`permute` permutes the rows and the columns of a matrix. `rowspec` and
+  `colspec` are keyword arguments providing seqs listing the indices
+  of the permutation."
   [^Matrix mat & {:keys [rowspec colspec]}]
   (let [[n m] (size mat)]
     (cond (and rowspec (some #(> % (dec n)) rowspec))
           (throw+ {:error "Row index out of bounds" :num-rows n :rowspec rowspec})
           (and colspec (some #(> % (dec m)) colspec))
           (throw+ {:error "Column index out of bounds" :num-columns n :colspec rowspec})
-
-          :else
-          (do
-            (let [mat1 (if rowspec
-                         (apply vstack (rows mat rowspec))
-                         mat)
-                  mat2 (if colspec
-                         (apply hstack (cols mat1 colspec))
-                         mat1)]
-              mat2)))))
+          
+          :else (permute-cols (permute-rows mat rowspec) colspec))))
 
 ;;; ### Block matrices
 ;;;
@@ -250,7 +267,8 @@ specified."
 ;;; sizes of the constant and 0 matrices.
 
 (defn- iswild
-  "Defines a wildcard symbol, used in `block`, `slice`, and `slices`."
+  "`iswild` is a helper function that defines what a wildcard symbol
+  is, used in `block`, `slice`, and `slices`."
   [sym]
   ;; This is a sort of silly way to do it, but I can't get the regex
   ;; to work for both '_ and #'user/_
@@ -264,8 +282,9 @@ specified."
         (= name2 "*"))))
 
 (defn- make-constr
-  "Subfunction for `block`. Makes a size-constraint hash for building
-  block matrices."
+  "`make-constr` is a subfunction for `block`. Generates the
+  size-constraint map based on the elements of the seqs in a block
+  matrix specification."
   [e]
   (if (matrix? e)
     {:matrix e
@@ -274,9 +293,10 @@ specified."
     {:constant e}))
 
 (defn- update-hash-with-constr
-  "Examines a new constraint against an old block-hash, `hsh`. Updates the
-  hash at position [i j] to respect the current constraint `constr`
-  according to `key`"
+  "`update-hash-with-const` is a subfunction for `block`. It examines
+  a particular constraint against an old hash representation of the
+  full set of constraints, `hsh`. Updates the hash at position [i j]
+  to respect the current constraint `constr` according to `key`"
   [hsh constr i j key]
   (let [{n key} constr
         old (hsh [i j])]
@@ -290,9 +310,11 @@ specified."
       (assoc hsh [i j]
              (assoc old key n)))))
 
-(defn- block-fn
-  "Creates a block matrix. Any number `n` represents the all-`n`
-  matrix of an appropriate size to make the matrix."
+(defn block-fn
+  "`block-fn` is the main worker subfunction for `block`. It's public
+  so that `block` can macroexpand to call it. It creates a block
+  matrix. Any number `n` represents the all-`n` matrix of an
+  appropriate size to make the matrix."
   [matrices]
   ;; We must do size-constraint propagation along the rows and columns
   ;; of the block-diagram in order to (a) ensure that the input isn't
@@ -300,23 +322,23 @@ specified."
   (let [n       (count matrices)
         lengths (map count matrices)
         m       (first lengths)]
-    (if (every? (partial == m) lengths)
-      
+    (if (not (every? (partial == m) lengths))
+      (throw+ {:error "Block matrices cannot be ragged."})
+
       ;; Build the constraints map
-      (let [constrs (map #(map make-constr %) matrices)
-            indices (for [i (range n) j (range m)] [i j])
+      (let [indices (for [i (range n) j (range m)] [i j])
             ;; The initial hash map contains what we know before
             ;; constraint propagation.
             init-map (reduce (fn [hsh [i j]]
                                (assoc hsh [i j]
-                                      (nth (nth constrs i) j)))
+                                      (make-constr (nth (nth matrices i) j))))
                              (hash-map) indices)
             ;; Walk over the index set and propagate all the constraints
             ;; over each row and column
             constraint-map
             (reduce
              (fn [hash [i j]]
-               (let [constr (nth (nth constrs i) j)]
+               (let [constr (init-map [i j])]
                  (if (or (:rows constr) (:cols constr))
                    ;; Look up and to the left for constraint violations,
                    ;; locking in constraints if they don't already exist
@@ -324,7 +346,9 @@ specified."
                            (reduce #(update-hash-with-constr %1 constr %2 j :cols)
                                    hash (range n))
                            (range m))
-                   hash))) init-map indices)]
+                   hash)))
+             init-map
+             indices)]
         ;; Use the constraint map to build the final matrix
         (apply vstack
                (for [i (range n)]
@@ -337,12 +361,11 @@ specified."
                               ;; unless otherwise constrained
                               (constant (:rows constr 1)
                                         (:cols constr 1)
-                                        (:constant constr)))))))))
-      (throw+ {:error "Block matrices cannot be ragged."}))))
+                                        (:constant constr))))))))))))
 
 (defmacro block
-  "Creates a block matrix using normal block matrix syntax written as
-  a row-major ordered vector of vectors. Each entry in the
+  "`block` creates a block matrix using normal block matrix syntax
+  written as a row-major ordered vector of vectors. Each entry in the
   specification can be a `Matrix`, a number, or a null symbol (either
   `.` or `_`). Numbers are translated as constant matrices of the
   appropriate size to complete the block matrix. Null symbols are
@@ -384,18 +407,19 @@ specified."
           (do ~form ~m)))))
 
 (defmacro slice
-  "Slice is the primary function for accessing and modifying a matrix
-at the single row, column, entry, or full matrix level. The
-row/colspec variables are either an integer or the atom '_ signifying
-that the index should run over all possible values for the row or
-column index. If a fourth argument is passed it is assumed to be a
-size-conforming entry, row, or matrix to be inserted into the spec'd
-location."
+  "`slice` is the primary function for accessing and modifying a
+   matrix at the single row, column, entry, or full matrix level. The
+   row/colspec variables are either an integer or the atom '_
+   signifying that the index should run over all possible values for
+   the row or column index. If a fourth argument is passed it is
+   assumed to be a size-conforming entry, row, or matrix to be
+   inserted into the spec'd location."
   [^Matrix matrix rowspec colspec & values?]
   (apply slicer matrix rowspec colspec values?))
 
 (defmacro slices
-  "Identical interface to `slice` except that it returns a sequence"
+  "`slices` provides an identical interface to `slice` except that it
+  returns a seq (or seq-of-seqs) instead of a `Matrix`."
   [^Matrix matrix rowspec colspec & values?]
   `(as-vec ~(apply slicer matrix rowspec colspec values?)))
 
@@ -413,45 +437,78 @@ location."
 ;;; asserting the matrix `arbitrary`.
 
 (defn symmetric
-  "Asserts that a matrix is symmetric."
+  "`symmetric` asserts that a matrix is symmetric."
   [^Matrix m] (with-meta m {:symmetric true}))
 
 (defn positive
-  "Asserts that a matrix is positive definite."
+  "`positive` asserts that a matrix is positive definite."
   [^Matrix m] (with-meta (symmetric m) {:positive true}))
 
 (defn arbitrary
-  "Asserts that a matrix is just arbitrary."  [^Matrix m] (with-meta m
-  {:symmetric false :positive false}))
+  "`arbitrary` asserts that a matrix is just arbitrary."
+  [^Matrix m] (with-meta m {:symmetric false :positive false}))
 
 (defn symmetric? [^Matrix m] (:symmetric (meta m)))
 (defn positive?  [^Matrix m] (:positive (meta m)))
 (defn arbitrary? [^Matrix m] (not (or (symmetric? m) (positive? m))))
 
 (defn maybe-symmetric
-  "Checks to see if a matrix is symmetric, then hints if true."
+  "`maybe-symmetric` attempts to assert that a matrix is symmetric,
+  but only succeeds if it actually is."
   [^Matrix m]
   (if (or (symmetric? m) (= (t m) m))
     (symmetric m)
     (with-meta m {:symmetric false})))
 
+(defn maybe-positive
+  "`maybe-positive` attempts to assert that a matrix is positive definite,
+  but only succeeds if it actually is. (Checked via eigenvalue
+  positivity.)"
+  [^Matrix m]
+  (let [m (maybe-symmetric m)]
+    (if (symmetric? m)
+      ;; We'll have faster access to the eigenvalues later...
+      (let [vals (Eigen/eigenvalues (:me m))
+            rvals (seq (.toArray (.real vals)))
+            ivals (seq (.toArray (.real vals)))
+            mags (map #(Math/sqrt (+ (Math/pow %1 2)
+                                     (Math/pow %2 2))) rvals ivals)]
+        (if (every? #(> % 0) mags)
+          (positive m)
+          m))
+      m)))
+
 ;;; # Linear algebra
 ;;;
+;;; Some of the most important reasons one would use matrices comes
+;;; from the techniques of linear algebra. Considering matrices as
+;;; linear transformations of vector spaces gives meaning to matrix
+;;; multiplication, introduces inversion and linear system solving,
+;;; and introduces decompositions and spectral theory. The following
+;;; functions give access to these rich techniques.
 
 (defn solve
-  "Solves the equation AX = B for X. Flags include :pd :positive
-  and :symmetric ensuring that optimized methods can be used"
+  "`solve` solves the equation `Ax = B` for the column `Matrix`
+  `x`. Positivity and symmetry hints on `A` will cause `solve` to use
+  optimized LAPACK routines."
   [^Matrix A ^Matrix B]
   (cond
-   (psd? A)       (Solve/solvePositive (:me A) (:me B))
+   (positive? A)  (Solve/solvePositive (:me A) (:me B))
    (symmetric? A) (Solve/solveSymmetric (:me A) (:me B))
    :else          (Solve/solve (:me A) (:me B))))
 
 (defn eigen
-  "Computes the eigensystem (or generalized eigensystem) for a square
-  matrix A. (eigen A :symmetric) uses optimized routines for symmetric
-  matrices while (eigen A :symmetric B) computes the generalized eigenvectors x
-  such that A x = L B x for symmetric A and B."
+  "`eigen` computes the eigensystem (or generalized eigensystem) for a
+  square `Matrix` `A`. Type hinting on `A` uses optimized routines for
+  symmetric matrices while `(eigen A B)` will check to ensure `A` and
+  `B` are symmetric before computing the generalized eigenvectors `x`
+  such that `A x = L B x`. In non-symmetric computations, eigenvalues
+  and vectors may be complex! In all cases, the real parts are
+  returned as keys `:values` and `:vectors` in the output hash map,
+  but if imaginary parts exist they are stored in `:ivalues` and
+  `:ivectors`. Inproper symmetry hinting or failure to check for
+  imaginary values will lead to mistakes in using the matrix
+  spectrum."
   ([^DoubleMatrix A]
      (cond
       (symmetric? A) (let [[vecs vals] (map #(Matrix. %)
@@ -479,31 +536,45 @@ location."
            {:vectors (cols vecs) :values (as-vec vals)})
          (throw+ {:error "Cannot do generalized eigensystem for non-symmetric matrices."})))))
 
-(defn maybe-positive
-  "Checks to see if a matrix is symmetric, then hints if true."
-  [^Matrix m]
-  (let [m (check-symmetric m)]
-    (if (symmetric? m)
-      (let [{vals :values} (eigen m)]
-        (if (every? #(> 0 %) vals)
-          (positive m)
-          m))
-      m)))
+(defn cholesky
+  "`(cholesky A)` is the Cholesky square root of a matrix, `U` such
+  that `U' U = A`. Note that `A` must be positive (semi) definite for
+  this to exist, but `cholesky` requires strict positivity."
+  [^Matrix mat]
+  (let [mat (maybe-positive mat)]
+    (if (positive? mat)
+      (Matrix. (Decompose/cholesky (:me mat)))
+      (throw+ {:exception "Cholesky decompositions require positivity."}))))
 
-;;; # Viewing the matrices
+;;; # Printing the matrices
 ;;;
+;;; When normally working with matrices in a REPL, it's huge mistake
+;;; to accidentally print a large matrix to the terminal. Usually,
+;;; it's sufficient to know a few matrix properties to check your
+;;; process so long as other functions allow for more detailed
+;;; examination.
+;;;
+;;; As seen above, `(str A)` on some matrix `A` attempts to write a
+;;; readable lisp form for `A` by using dense seq-of-seq
+;;; semantics. Below we demonstrate non-readable printing methods for
+;;; `Matrix` which show only its size (`print-method`, used by the
+;;; REPL) and, for more detail, a limited subset of its elements
+;;; (`pp`).
 
 (defmethod print-method Matrix [mat ^Writer w]
   (.write w "#<Matrix ")
   (.write w (str (size mat)))
   (.write w ">"))
 
-;;; This one is pretty ugly, but whatever.
+;;; (This function is pretty ugly...)
+
 (defn pp
-  "Pretty printer for matrices. The second and third optional
-arguments are for large, precise matrices, specifying the amount of
-elements to show and their precision respectively."
-  ([^Matrix mat] (pp mat 3 4))
+  "`pp` pretty prints `Matrix` objects. The second and third optional
+   arguments are for large, precise matrices, specifying the amount of
+   elements to show and their precision respectively. By default, at
+   most 3 rows and columns at the beginning and end of the matrix are
+   printed with elements having 3 significant figures."
+  ([^Matrix mat] (pp mat 3 2))
   ([^Matrix mat prec] (pp mat 3 prec))
   ([^Matrix mat nbits prec]
      (let [[n m] (size mat)

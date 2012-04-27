@@ -1,6 +1,6 @@
 (defproject clatrix/clatrix "0.1.0-SNAPSHOT"
   :description "Because using matrices in Clojure needs to not suck." 
-  ;:url "http://example.com/FIXME"
+  :url "https://github.com/tel/clatrix"
   :license {:name "MIT License"
             :url "http://www.opensource.org/licenses/MIT"}
   :resource-paths ["native"]
