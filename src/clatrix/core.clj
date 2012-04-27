@@ -160,6 +160,36 @@
   "`(id n)` is the `n`x`n` identity matrix."
   [^long n] (Matrix. (DoubleMatrix/eye n)))
 
+;;; ## Sparse and indexed builds
+;;;
+;;; Sometimes your matrix is mostly zeros and it's easy to specify the
+;;; matrix using only the non-zero entries. For this use
+;;; `from-sparse`. It's also often easy to build matrices directly
+;;; from their indices instead of going through an initial seq-of-seqs
+;;; step which is facilitated by `from-indices`.
+
+(defn from-sparse
+  "`from-sparse` creates a new `Matrix` from a sparse
+  representation. A sparse representation is a seq of seqs, each inner
+  seq having the form `[i j v]` stating that in the final matrix
+  `A`, `(get A i j)` is `v`. The sparse specifications are applied in
+  order, so if they overlap the latter spec will override the prior
+  ones."
+  [^long n ^long m specs]
+  (let [m (zeros n m)]
+    (doseq [[i j v] specs]
+      (set m i j v))))
+
+(defn from-indices
+  "`from-indices` builds an `n`x`m` matrix from a function mapping the
+  indices to values which are then stored at that location."
+  [^long n ^long m fun]
+  (let [ary (make-array Double/TYPE n m)]
+    (doseq [i (range n)
+            j (range n)]
+      (aset ary i j (fun i j)))
+    (Matrix. (DoubleMatrix. ^"[[D" ary))))
+
 ;;; ## Random matrices
 ;;;
 ;;; It's also useful to generate random matrices. These are
