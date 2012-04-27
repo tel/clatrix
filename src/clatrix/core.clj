@@ -1,7 +1,8 @@
 (ns clatrix.core
   (:refer-clojure :exclude [get set rand vector?])
   (:use [slingshot.slingshot :only [throw+]])
-  (:import [org.jblas DoubleMatrix Decompose Eigen Solve Singular MatrixFunctions]
+  (:import [org.jblas DoubleMatrix ComplexDoubleMatrix
+            Decompose Eigen Solve Singular MatrixFunctions]
            [java.io Writer]))
 
 ;;; Clatrix is a fast matrix library for Clojure written atop JBlas'
@@ -17,11 +18,17 @@
 ;;; underlying Java methods. It's not hard to access them (they're
 ;;; available through the `:me` keyword), but their use is clearly
 ;;; dissuaded.
+
 (defrecord Matrix [^DoubleMatrix me]
   Object
   (toString [^Matrix mat]
     (str (list 'matrix
-               (vec (map vec (vec (.toArray2 (:me mat)))))))))
+               (vec (map vec (vec (.toArray2 ^DoubleMatrix (:me mat)))))))))
+
+(defmacro dotom [name m & args]
+  `(~name ^DoubleMatrix (:me ~m) ~@args))
+
+(defn- me [^Matrix m] ^DoubleMatrix (:me m))
 
 ;;; # Java interop
 ;;; 
@@ -36,7 +43,7 @@
 
 (defmacro promote-mfun* [defname name fname]
   (let [m (gensym)]
-    `(~defname ~name [^Matrix ~m] (~fname (:me ~m)))))
+    `(~defname ~name [^Matrix ~m] (dotom ~fname ~m))))
 
 ;;; # Basics of matrix objects
 ;;;
@@ -65,9 +72,9 @@
 ;;; wrapper, but it's too useful to hide.
 
 (defn get [^Matrix m ^long r ^long c]
-  (.get (:me m) r c))
+  (dotom .get m r c))
 (defn set [^Matrix m ^long r ^long c ^double e]
-  (.put (:me m) r c e))
+  (dotom .put m r c e))
 
 ;;; Already this is sufficient to get some algebraic matrix
 ;;; properties, such as
@@ -86,7 +93,7 @@
 (defn dense
   "`dense` converts a matrix object into a seq-of-seqs of its elements
   in row-major order."  [^Matrix m]
-  (vec (map vec (vec (.toArray2 (:me m))))))
+  (vec (map vec (vec (dotom .toArray2 m)))))
 
 (defn as-vec
   "`as-vec` converts a matrix object into a seq-of-seqs of its
@@ -94,8 +101,8 @@
   differently, though, flattening the return seq to a single vector."
   [^Matrix m]
   (if (vector? m)
-    (vec (.toArray (:me m)))
-    (vec (map vec (vec (.toArray2 (:me m)))))))
+    (vec (dotom .toArray m))
+    (vec (map vec (vec (dotom .toArray2 m))))))
 
 ;;; # Matrix creation
 ;;;
@@ -106,7 +113,7 @@
 (defn column
   "`column` coerces a seq of numbers to a column `Matrix`."
   [^doubles seq]
-  (Matrix. (DoubleMatrix. (into-array Double/TYPE seq))))
+  (Matrix. (DoubleMatrix. ^doubles (into-array Double/TYPE seq))))
 
 (defn matrix
   "`matrix` creates a `Matrix` from a seq of seqs, specifying the
@@ -116,7 +123,9 @@
   (let [lengths (map count seq-of-seqs)
         l0      (first lengths)]
     (if (every? (partial = l0) lengths)
-      (Matrix. (DoubleMatrix. (into-array (map #(into-array Double/TYPE %) seq-of-seqs))))
+      (Matrix.
+       (DoubleMatrix.
+        ^"[[D" (into-array (map #(into-array Double/TYPE %) seq-of-seqs))))
       (throw+ {:error "Cannot create a ragged matrix."}))))
 
 (defn diag
@@ -130,7 +139,7 @@
       (let [n (apply min (size mat))]
         (map #(get mat % %) (range n))))
     (let [di ^doubles (seq seq-or-matrix)]
-      (Matrix. (DoubleMatrix/diag (DoubleMatrix. (into-array Double/TYPE di)))))))
+      (Matrix. (DoubleMatrix/diag (DoubleMatrix. ^doubles (into-array Double/TYPE di)))))))
 
 (defn constant
   "`constant` creates a column or matrix with every element equal to
@@ -165,13 +174,11 @@
    `sigma`."
   ([^double mu ^double sigma ^long n ^long m]
      (Matrix.
-      (doto (:me (randn* n m))
-        (.muli sigma)
+      (doto (dotom .muli (randn* n m) sigma)
         (.addi mu))))
   ([^double mu ^double sigma ^long n]
      (Matrix.
-      (doto (:me (randn* n))
-        (.muli sigma)
+      (doto (dotom .muli (randn* n) sigma)
         (.addi mu))))
   ([^long n ^long m] (randn* n m))
   ([^long n] (randn* n)))
@@ -184,7 +191,7 @@
 
 (defn t
   "`(t A)` is the transpose of `A`."
-  [^Matrix mat] (Matrix. (.transpose (:me mat))))
+  [^Matrix mat] (Matrix. (dotom .transpose mat)))
 
 (defn hstack
   "`hstack` concatenates a number of matrices by aligning them
@@ -197,8 +204,10 @@
         row-counts (map #(first (size %)) vec-seq)
         rows (first row-counts)]
     (if (every? (partial == rows) row-counts)
-      (Matrix. (reduce #(DoubleMatrix/concatHorizontally %1 (:me %2))
-                       (:me (first vec-seq))
+      (Matrix. (reduce #(DoubleMatrix/concatHorizontally
+                         ^DoubleMatrix %1
+                         ^DoubleMatrix (me %2))
+                       (me (first vec-seq))
                        (rest vec-seq))))))
 
 (defn vstack
@@ -208,8 +217,10 @@
   (let [col-counts (map #(second (size %)) vec-seq)
         cols (first col-counts)]
     (if (every? (partial == cols) col-counts)
-      (Matrix. (reduce #(DoubleMatrix/concatVertically %1 (:me %2))
-                       (:me (first vec-seq))
+      (Matrix. (reduce #(DoubleMatrix/concatVertically
+                         ^DoubleMatrix %1
+                         ^DoubleMatrix (me %2))
+                       (me (first vec-seq))
                        (rest vec-seq))))))
 
 (defn rows
@@ -220,7 +231,7 @@
      (let [[n m] (size mat)]
        (rows mat (range n))))
   ([^Matrix m ^longs idxs]
-     (map #(Matrix. (.getRow (:me m) %)) idxs)))
+     (map #(Matrix. (dotom .getRow m %)) idxs)))
 
 (defn cols
   "`cols` explodes a `Matrix` into its constituent columns in the
@@ -229,7 +240,7 @@
      (let [[n m] (size mat)]
        (cols mat (range m))))
   ([^Matrix m ^longs idxs]
-     (map #(Matrix. (.getColumn (:me m) %)) idxs)))
+     (map #(Matrix. (dotom .getColumn m %)) idxs)))
 
 ;;; From this we also get generalized matrix permutations almost for free.
 
@@ -394,14 +405,14 @@
 (defn- slicer
   ([^Matrix matrix rowspec colspec]
      (cond (and (iswild rowspec) (iswild colspec)) matrix
-           (iswild rowspec) `(Matrix. (.getColumn (:me ~matrix) ~colspec))
-           (iswild colspec) `(Matrix. (.getRow    (:me ~matrix) ~rowspec))
+           (iswild rowspec) `(Matrix. (dotom .getColumn ~matrix ~colspec))
+           (iswild colspec) `(Matrix. (dotom .getRow    ~matrix ~rowspec))
            :else            `(get                 ~matrix ~rowspec ~colspec)))
   ([^DoubleMatrix matrix rowspec colspec values]
      (let [m (gensym)
            form (cond (and (iswild rowspec) (iswild colspec)) `(.copy ~m ~values)
-                      (iswild rowspec) `(.putColumn (:me ~m) ~colspec ~values)
-                      (iswild colspec) `(.putRow    (:me ~m) ~rowspec ~values)
+                      (iswild rowspec) `(dotom .putColumn ~m ~colspec ~values)
+                      (iswild colspec) `(dotom .putRow    ~m ~rowspec ~values)
                       :else            `(set        ~m ~rowspec ~colspec ~values))]
        `(let [~m ~matrix]
           (do ~form ~m)))))
@@ -468,7 +479,7 @@
   (let [m (maybe-symmetric m)]
     (if (symmetric? m)
       ;; We'll have faster access to the eigenvalues later...
-      (let [vals (Eigen/eigenvalues (:me m))
+      (let [vals (dotom Eigen/eigenvalues m)
             rvals (seq (.toArray (.real vals)))
             ivals (seq (.toArray (.real vals)))
             mags (map #(Math/sqrt (+ (Math/pow %1 2)
@@ -493,9 +504,12 @@
   optimized LAPACK routines."
   [^Matrix A ^Matrix B]
   (cond
-   (positive? A)  (Solve/solvePositive (:me A) (:me B))
-   (symmetric? A) (Solve/solveSymmetric (:me A) (:me B))
-   :else          (Solve/solve (:me A) (:me B))))
+   (positive? A)  (Solve/solvePositive ^DoubleMatrix (me A)
+                                       ^DoubleMatrix (me B))
+   (symmetric? A) (Solve/solveSymmetric ^DoubleMatrix (me A)
+                                        ^DoubleMatrix (me B))
+   :else          (Solve/solve ^DoubleMatrix (me A)
+                               ^DoubleMatrix (me B))))
 
 (defn eigen
   "`eigen` computes the eigensystem (or generalized eigensystem) for a
@@ -512,18 +526,19 @@
   ([^DoubleMatrix A]
      (cond
       (symmetric? A) (let [[vecs vals] (map #(Matrix. %)
-                                            (seq (Eigen/symmetricEigenvectors (:me A))))]
-                       {:vectors (cols vecs) :values (diag vals)})
-      :else          (let [[vecs vals] (seq (Eigen/eigenvectors (:me A)))
+                                            (seq (dotom Eigen/symmetricEigenvectors A)))]
+                       {:vectors vecs :values (diag vals)})
+      :else          (let [[^ComplexDoubleMatrix vecs ^ComplexDoubleMatrix vals]
+                           (seq (dotom Eigen/eigenvectors A))
                            rvecs (Matrix. (.real vecs))
                            ivecs (Matrix. (.imag vecs))
                            rvals (diag (Matrix. (.real vals)))
                            ivals (diag (Matrix. (.imag vals)))
-                           out {:vectors (cols rvecs)
+                           out {:vectors rvecs
                                 :values  rvals}]
                        (if (some (partial not= 0.0) ivals)
                          (merge out
-                                {:ivectors (cols ivecs)
+                                {:ivectors ivecs
                                  :ivalues  ivals})
                          out))))
   ([^DoubleMatrix A ^DoubleMatrix B]
@@ -532,8 +547,9 @@
        (if (and (symmetric? A) (symmetric? B))
          (let [[vecs vals]
                (map #(Matrix. %)
-                    (seq (Eigen/symmetricGeneralizedEigenvectors (:me A) (:me B))))]
-           {:vectors (cols vecs) :values (as-vec vals)})
+                    (seq (Eigen/symmetricGeneralizedEigenvectors ^DoubleMatrix (me A)
+                                                                 ^DoubleMatrix (me B))))]
+           {:vectors vecs :values (as-vec vals)})
          (throw+ {:error "Cannot do generalized eigensystem for non-symmetric matrices."})))))
 
 (defn cholesky
@@ -543,7 +559,7 @@
   [^Matrix mat]
   (let [mat (maybe-positive mat)]
     (if (positive? mat)
-      (Matrix. (Decompose/cholesky (:me mat)))
+      (Matrix. (dotom Decompose/cholesky mat))
       (throw+ {:exception "Cholesky decompositions require positivity."}))))
 
 ;;; # Printing the matrices
