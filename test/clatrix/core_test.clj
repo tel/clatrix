@@ -1,20 +1,35 @@
 (ns clatrix.core-test
   (:use expectations)
+  (:import [clatrix.core Matrix])
   (:require [clatrix.core :as c]))
 
-(let [A (c/rand 10 15)
-      S (c/rand 10 10)
-      [n m] (c/size A)
-      [ns _] (c/size S)
+(let [[n m] [10 15]
+      ns n
+      A (c/rand n m)
+      S (c/rand ns ns)
       ridx (range n)
       cidx (range m)]
-  ;; creation
+
+  ;; properties of A/S
+  (expect Matrix A)
+  (expect Matrix S)
+  (given A
+         (expect c/size [n m]))
+  (given S
+         (expect c/size [ns ns]))
+
+  ;; properties of id
+  (given (c/id n)
+         (expect c/size [n n]
+                 c/trace (double n)))
+  
+  ;; conversion from Clojure types is invertible
   (expect A (c/matrix (c/dense A)))
 
-  ;; structure/extraction
+  ;; diagonal structure becomes 2-parity involutive
   (expect (c/diag A) (c/diag (c/diag (c/diag A))))
 
-  ;; algebra
+  ;; structure algebraic constraints
   (expect A (c/t (c/t A)))
   (expect A (apply c/hstack (c/cols A)))
   (expect A (apply c/vstack (c/rows A)))
@@ -40,4 +55,7 @@
     (expect Ac (c/block [[c1 c2 c3]]))
     (expect Ar (c/block [[r1]
                          [r2]
-                         [r3]]))))
+                         [r3]])))
+  ;; linear algebra
+  (expect (double (* 7 20)) (c/trace (c/+ (c/id 20) (c/id 20) 5)))
+  (expect A (c/- (c/+ A A) A)))

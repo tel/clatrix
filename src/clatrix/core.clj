@@ -1,5 +1,5 @@
 (ns clatrix.core
-  (:refer-clojure :exclude [get set rand vector?])
+  (:refer-clojure :exclude [get set rand vector? + -])
   (:use [slingshot.slingshot :only [throw+]])
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix
             Decompose Eigen Solve Singular MatrixFunctions]
@@ -19,14 +19,21 @@
 ;;; available through the `:me` keyword), but their use is clearly
 ;;; dissuaded.
 
-(defrecord Matrix [^DoubleMatrix me]
+(deftype Matrix [^DoubleMatrix me]
   Object
   (toString [^Matrix mat]
     (str (list 'matrix
-               (vec (map vec (vec (.toArray2 ^DoubleMatrix (:me mat)))))))))
+               (vec (map vec (vec (.toArray2 ^DoubleMatrix (me mat))))))))
+  (equals [^Matrix a b]
+    (and (isa? (type b) Matrix)
+         (.equals ^DoubleMatrix (.me a)
+                  ^DoubleMatrix (.me b)))))
+
+(defn- me [^Matrix mat]
+  (.me mat))
 
 (defmacro dotom [name m & args]
-  `(~name ^DoubleMatrix (:me ~m) ~@args))
+  `(~name ^DoubleMatrix (me ~m) ~@args))
 
 ;;; # Java interop
 ;;; 
@@ -81,7 +88,7 @@
   [^Matrix mat]
   (if (square? mat)
     (let [[n _] (size mat)]
-      (reduce #(+ (get mat %2 %2) %1) 0 (range n)))
+      (reduce #(clojure.core/+ (get mat %2 %2) %1) 0 (range n)))
     (throw+ {:error "Cannot take trace of non-square matrix."})))
 
 ;;; We can also map the entire matrices back into Clojure data
@@ -232,8 +239,8 @@
     (if (every? (partial == rows) row-counts)
       (Matrix. (reduce #(DoubleMatrix/concatHorizontally
                          ^DoubleMatrix %1
-                         ^DoubleMatrix (:me %2))
-                       (:me (first vec-seq))
+                         ^DoubleMatrix (me %2))
+                       (me (first vec-seq))
                        (rest vec-seq))))))
 
 (defn vstack
@@ -245,8 +252,8 @@
     (if (every? (partial == cols) col-counts)
       (Matrix. (reduce #(DoubleMatrix/concatVertically
                          ^DoubleMatrix %1
-                         ^DoubleMatrix (:me %2))
-                       (:me (first vec-seq))
+                         ^DoubleMatrix (me %2))
+                       (me (first vec-seq))
                        (rest vec-seq))))))
 
 (defn rows
@@ -510,8 +517,9 @@
       (let [vals (dotom Eigen/eigenvalues m)
             rvals (seq (.toArray (.real vals)))
             ivals (seq (.toArray (.real vals)))
-            mags (map #(Math/sqrt (+ (Math/pow %1 2)
-                                     (Math/pow %2 2))) rvals ivals)]
+            mags (map #(Math/sqrt
+                        (clojure.core/+ (Math/pow %1 2)
+                                        (Math/pow %2 2))) rvals ivals)]
         (if (every? #(> % 0) mags)
           (positive m)
           m))
@@ -526,18 +534,50 @@
 ;;; and introduces decompositions and spectral theory. The following
 ;;; functions give access to these rich techniques.
 
+(defn +
+  "`+` sums vectors and matrices (and scalars as if they were constant
+  matrices). All the matrices must have the same size."
+  ([a b] (cond (and (matrix? a) (matrix? b))
+               (if (= (size a) (size b))
+                 (Matrix. (dotom .add a ^DoubleMatrix (me b)))
+                 (throw+ {:exception "Matrices of different sizes cannot be summed."
+                          :asize (size a)
+                          :bsize (size b)}))
+               (matrix? a) (Matrix.
+                            (dotom .add a (double b)))
+               (matrix? b) (Matrix.
+                            (dotom .add b (double a)))
+               :else       (+ a b)))
+  ([a b & as] (reduce + a (cons b as))))
+
+(defn -
+  "`-` differences vectors and matrices (and scalars as if they were
+  constant matrices). All the matrices must have the same size."
+  ([a b] (cond (and (matrix? a) (matrix? b))
+               (if (= (size a) (size b))
+                 (Matrix. (dotom .sub a ^DoubleMatrix (me b)))
+                 (throw+ {:exception "Matrices of different sizes cannot be differenced."
+                          :asize (size a)
+                          :bsize (size b)}))
+               (matrix? a) (Matrix.
+                            (dotom .sub a (double b)))
+               (matrix? b) (Matrix.
+                            (dotom .rsub b (double a)))
+               :else       (+ a b)))
+  ([a b & as] (reduce + a (cons b as))))
+
 (defn solve
   "`solve` solves the equation `Ax = B` for the column `Matrix`
   `x`. Positivity and symmetry hints on `A` will cause `solve` to use
   optimized LAPACK routines."
   [^Matrix A ^Matrix B]
   (cond
-   (positive? A)  (Solve/solvePositive ^DoubleMatrix (:me A)
-                                       ^DoubleMatrix (:me B))
-   (symmetric? A) (Solve/solveSymmetric ^DoubleMatrix (:me A)
-                                        ^DoubleMatrix (:me B))
-   :else          (Solve/solve ^DoubleMatrix (:me A)
-                               ^DoubleMatrix (:me B))))
+   (positive? A)  (Solve/solvePositive ^DoubleMatrix (me A)
+                                       ^DoubleMatrix (me B))
+   (symmetric? A) (Solve/solveSymmetric ^DoubleMatrix (me A)
+                                        ^DoubleMatrix (me B))
+   :else          (Solve/solve ^DoubleMatrix (me A)
+                               ^DoubleMatrix (me B))))
 
 (defn eigen
   "`eigen` computes the eigensystem (or generalized eigensystem) for a
@@ -565,7 +605,7 @@
                            out {:vectors rvecs
                                 :values  rvals}]
                        (if (some (partial not= 0.0) ivals)
-                         (:merge out
+                         (merge out
                                 {:ivectors ivecs
                                  :ivalues  ivals})
                          out))))
@@ -575,8 +615,8 @@
        (if (and (symmetric? A) (symmetric? B))
          (let [[vecs vals]
                (map #(Matrix. %)
-                    (seq (Eigen/symmetricGeneralizedEigenvectors ^DoubleMatrix (:me A)
-                                                                 ^DoubleMatrix (:me B))))]
+                    (seq (Eigen/symmetricGeneralizedEigenvectors ^DoubleMatrix (me A)
+                                                                 ^DoubleMatrix (me B))))]
            {:vectors vecs :values (as-vec vals)})
          (throw+ {:error "Cannot do generalized eigensystem for non-symmetric matrices."})))))
 
@@ -626,10 +666,10 @@
            small-cols (< m (* nbits 2))
            rowset (if (< n (* nbits 2))
                     (range n)
-                    (concat (range nbits) (range (- n nbits) n)))
+                    (concat (range nbits) (range (clojure.core/- n nbits) n)))
            colset (if (< m (* nbits 2))
                     (range m)
-                    (concat (range nbits) (range (- m nbits) m)))
+                    (concat (range nbits) (range (clojure.core/- m nbits) m)))
            submat (apply hstack (cols (apply vstack (rows mat rowset)) colset))
            [n m] (size submat)
            fmt (str "% ." prec "e ")
