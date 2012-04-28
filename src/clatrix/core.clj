@@ -277,17 +277,19 @@
   (if colspec (apply hstack (cols mat colspec)) mat))
 
 (defn permute
-  "`permute` permutes the rows and the columns of a matrix. `rowspec` and
-  `colspec` are keyword arguments providing seqs listing the indices
-  of the permutation."
-  [^Matrix mat & {:keys [rowspec colspec]}]
-  (let [[n m] (size mat)]
-    (cond (and rowspec (some #(> % (dec n)) rowspec))
-          (throw+ {:error "Row index out of bounds" :num-rows n :rowspec rowspec})
-          (and colspec (some #(> % (dec m)) colspec))
-          (throw+ {:error "Column index out of bounds" :num-columns n :colspec rowspec})
+  "`permute` permutes the rows and the columns of a matrix. `:rowspec`
+  and `:colspec` (or, for short, `:r` and `:c`) are keyword arguments
+  providing seqs listing the indices of the permutation."  [^Matrix
+  mat & {:keys [r c rowspec colspec]}]
+  (let [[n m] (size mat)
+        r (or r rowspec)
+        c (or c colspec)]
+    (cond (and r (some #(> % (dec n)) r))
+          (throw+ {:error "Row index out of bounds" :num-rows n :rowspec r})
+          (and c (some #(> % (dec m)) c))
+          (throw+ {:error "Column index out of bounds" :num-columns n :colspec c})
           
-          :else (permute-cols (permute-rows mat rowspec) colspec))))
+          :else (permute-cols (permute-rows mat r) c))))
 
 ;;; ### Block matrices
 ;;;
