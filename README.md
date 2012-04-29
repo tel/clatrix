@@ -7,8 +7,9 @@ speed. Being implemented in Clojure makes it clever.
 
 ## Usage
 
-For now, generate the documentation using `lein marg` and take a
-look. A few examples of things you can do below.
+For now, you can read the 
+[Marginalia documentation](http://tel.github.com/clatrix) or take a look
+at a few examples below.
 
 ```Clojure
 clatrix.core> (let [A (matrix (repeat 5 (range 10)))] (pp A))
