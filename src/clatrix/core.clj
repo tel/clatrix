@@ -160,6 +160,19 @@
   "`(id n)` is the `n`x`n` identity matrix."
   [^long n] (Matrix. (DoubleMatrix/eye n)))
 
+;;; ## Reshaping
+
+(defn reshape
+  "`(reshape A p q)` coerces an `n`x`m` matrix to be `p`x`q` so long
+  as `pq = nm`."
+  [^Matrix A p q]
+  (let [[n m] (size A)]
+    (if (= (* n m) (* p q))
+      (dotom A p q)
+      (throw+ {:exception "Cannot change the number of elements during a reshape."
+               :previous (* n m)
+               :new (* p q)}))))
+
 ;;; ## Sparse and indexed builds
 ;;;
 ;;; Sometimes your matrix is mostly zeros and it's easy to specify the
