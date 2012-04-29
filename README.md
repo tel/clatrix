@@ -41,16 +41,17 @@ clatrix.core> (time (rank (rand 1000 1000)))
 1000
 
 clatrix.core> (def A (rand 10 14))
-#'clatrix.core/A
+clatrix.core> (def B (* A (t A)))
+clatrix.core> (def P (rspectral 10))
+clatrix.core> (def G (cholesky P))
+
 clatrix.core> (= A (c/t (c/t A)))
 true
 clatrix.core> (= A (hstack (cols A)))
 true
-clatrix.core> (def B (* A (t A)))
-#'clatrix.core/B
 clatrix.core> (let [{P :p L :l U :u} (lu B)] (= B (* P L U)))
 true
-clatrix.core> (let [P (rspectral 10) G (cholesky P)] (= P (* (t G) G)))
+clatrix.core> (= P (* (t G) G))
 true
 ```
 
