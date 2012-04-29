@@ -257,7 +257,8 @@
   "`vstack` is vertical concatenation in the style of `hstack`. See
   `hstack` documentation for more detail."
   [& vec-seq]
-  (let [col-counts (clojure.core/map #(second (size %)) vec-seq)
+  (let [vec-seq (flatten vec-seq)
+        col-counts (clojure.core/map #(second (size %)) vec-seq)
         cols (first col-counts)]
     (if (every? (partial == cols) col-counts)
       (Matrix. (reduce #(DoubleMatrix/concatVertically
