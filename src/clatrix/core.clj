@@ -1,8 +1,9 @@
 (ns clatrix.core
-  (:refer-clojure :exclude [get set rand vector? + -])
+  (:refer-clojure :exclude [get set map-indexed map rand vector? + - *])
   (:use [slingshot.slingshot :only [throw+]])
-  (:import [org.jblas DoubleMatrix ComplexDoubleMatrix
-            Decompose Eigen Solve Singular MatrixFunctions]
+  (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
+            Decompose Decompose$LUDecomposition Eigen Solve Geometry
+            Singular MatrixFunctions]
            [java.io Writer]))
 
 ;;; Clatrix is a fast matrix library for Clojure written atop JBlas'
@@ -19,15 +20,11 @@
 ;;; available through the `:me` keyword), but their use is clearly
 ;;; dissuaded.
 
-(deftype Matrix [^DoubleMatrix me]
+(defrecord Matrix [^DoubleMatrix me]
   Object
   (toString [^Matrix mat]
     (str (list 'matrix
-               (vec (map vec (vec (.toArray2 ^DoubleMatrix (me mat))))))))
-  (equals [^Matrix a b]
-    (and (isa? (type b) Matrix)
-         (.equals ^DoubleMatrix (.me a)
-                  ^DoubleMatrix (.me b)))))
+               (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (me mat)))))))))
 
 (defn- me [^Matrix mat]
   (.me mat))
@@ -97,7 +94,7 @@
 (defn dense
   "`dense` converts a matrix object into a seq-of-seqs of its elements
   in row-major order."  [^Matrix m]
-  (vec (map vec (vec (dotom .toArray2 m)))))
+  (vec (clojure.core/map vec (vec (dotom .toArray2 m)))))
 
 (defn as-vec
   "`as-vec` converts a matrix object into a seq-of-seqs of its
@@ -106,7 +103,7 @@
   [^Matrix m]
   (if (vector? m)
     (vec (dotom .toArray m))
-    (vec (map vec (vec (dotom .toArray2 m))))))
+    (vec (clojure.core/map vec (vec (dotom .toArray2 m))))))
 
 ;;; # Matrix creation
 ;;;
@@ -124,12 +121,12 @@
   matrix in row-major order. The length of each seq must be
   identical or an error is throw."
   [seq-of-seqs]
-  (let [lengths (map count seq-of-seqs)
+  (let [lengths (clojure.core/map count seq-of-seqs)
         l0      (first lengths)]
     (if (every? (partial = l0) lengths)
       (Matrix.
        (DoubleMatrix.
-        ^"[[D" (into-array (map #(into-array Double/TYPE %) seq-of-seqs))))
+        ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE %) seq-of-seqs))))
       (throw+ {:error "Cannot create a ragged matrix."}))))
 
 (defn diag
@@ -141,7 +138,7 @@
       ;; We'll extract largest diagonals from non-square matrices
       ;; since this isn't really a matrix algebraic property
       (let [n (apply min (size mat))]
-        (map #(get mat % %) (range n))))
+        (clojure.core/map #(get mat % %) (range n))))
     (let [di ^doubles (seq seq-or-matrix)]
       (Matrix. (DoubleMatrix/diag (DoubleMatrix. ^doubles (into-array Double/TYPE di)))))))
 
@@ -234,7 +231,7 @@
   to `apply`."
   [& vec-seq]
   (let [vec-seq (flatten vec-seq)
-        row-counts (map #(first (size %)) vec-seq)
+        row-counts (clojure.core/map #(first (size %)) vec-seq)
         rows (first row-counts)]
     (if (every? (partial == rows) row-counts)
       (Matrix. (reduce #(DoubleMatrix/concatHorizontally
@@ -247,7 +244,7 @@
   "`vstack` is vertical concatenation in the style of `hstack`. See
   `hstack` documentation for more detail."
   [& vec-seq]
-  (let [col-counts (map #(second (size %)) vec-seq)
+  (let [col-counts (clojure.core/map #(second (size %)) vec-seq)
         cols (first col-counts)]
     (if (every? (partial == cols) col-counts)
       (Matrix. (reduce #(DoubleMatrix/concatVertically
@@ -264,7 +261,7 @@
      (let [[n m] (size mat)]
        (rows mat (range n))))
   ([^Matrix m ^longs idxs]
-     (map #(Matrix. (dotom .getRow m %)) idxs)))
+     (clojure.core/map #(Matrix. (dotom .getRow m %)) idxs)))
 
 (defn cols
   "`cols` explodes a `Matrix` into its constituent columns in the
@@ -273,7 +270,7 @@
      (let [[n m] (size mat)]
        (cols mat (range m))))
   ([^Matrix m ^longs idxs]
-     (map #(Matrix. (dotom .getColumn m %)) idxs)))
+     (clojure.core/map #(Matrix. (dotom .getColumn m %)) idxs)))
 
 ;;; From this we also get generalized matrix permutations almost for free.
 
@@ -366,7 +363,7 @@
   ;; of the block-diagram in order to (a) ensure that the input isn't
   ;; in error and (b) find the proper sizes for the constant matrices.
   (let [n       (count matrices)
-        lengths (map count matrices)
+        lengths (clojure.core/map count matrices)
         m       (first lengths)]
     (if (not (every? (partial == m) lengths))
       (throw+ {:error "Block matrices cannot be ragged."})
@@ -419,7 +416,7 @@
   constrained to be the proper size. Any integers which do not share a
   row or a column with a larger matrix are assumed to be 1x1 sized."
   [blockspec]
-  `(block-fn ~(vec (map #(vec (map (fn [e] (if (iswild e) 0 e)) %)) blockspec))))
+  `(block-fn ~(vec (clojure.core/map #(vec (clojure.core/map (fn [e] (if (iswild e) 0 e)) %)) blockspec))))
 
 
 ;;; # Slicing 
@@ -517,13 +514,36 @@
       (let [vals (dotom Eigen/eigenvalues m)
             rvals (seq (.toArray (.real vals)))
             ivals (seq (.toArray (.real vals)))
-            mags (map #(Math/sqrt
+            mags (clojure.core/map #(Math/sqrt
                         (clojure.core/+ (Math/pow %1 2)
                                         (Math/pow %2 2))) rvals ivals)]
         (if (every? #(> % 0) mags)
           (positive m)
           m))
       m)))
+
+;;; # Functor operations
+;;;
+;;; It's sometimes useful to transform a matrix elementwise. For this
+;;; we use the usual functor interface through `map-indexed` and
+;;; `map`.
+
+(defn map-indexed
+  "`map-indexed` maps a function over the indices and corresponding
+  elements to create a new equivalently sized matrix with the
+  resulting elements."
+  [fun ^Matrix mat]
+  (let [[n m] (size mat)]
+    (from-sparse
+     (for [i (range n)
+           j (range m)]
+       [i j (fun i j (get mat i j))]))))
+
+(defn map
+  "`map` is a specialization of `map-indexed` where the function does
+  not get passed the indices."
+  [fun ^Matrix mat]
+  (clojure.core/map-indexed #(fun %3) mat))
 
 ;;; # Linear algebra
 ;;;
@@ -533,6 +553,19 @@
 ;;; multiplication, introduces inversion and linear system solving,
 ;;; and introduces decompositions and spectral theory. The following
 ;;; functions give access to these rich techniques.
+
+(defn norm
+  "`norm` computes the 2-norm of a vector or the Frobenius norm of a matrix."
+  [^Matrix mat]
+  (dotom .norm2 mat))
+
+(defn normalize
+  "`normalize` normalizes a matrix as a single column or collection of
+  column vectors."
+  [^Matrix mat & [flags]]
+  (if (column? mat)
+    (Matrix. (dotom Geometry/normalize mat))
+    (Matrix. (dotom Geometry/normalizeColumns mat))))
 
 (defn +
   "`+` sums vectors and matrices (and scalars as if they were constant
@@ -547,7 +580,7 @@
                             (dotom .add a (double b)))
                (matrix? b) (Matrix.
                             (dotom .add b (double a)))
-               :else       (+ a b)))
+               :else       (clojure.core/+ a b)))
   ([a b & as] (reduce + a (cons b as))))
 
 (defn -
@@ -563,21 +596,93 @@
                             (dotom .sub a (double b)))
                (matrix? b) (Matrix.
                             (dotom .rsub b (double a)))
-               :else       (+ a b)))
-  ([a b & as] (reduce + a (cons b as))))
+               :else       (clojure.core/- a b)))
+  ([a b & as] (reduce - a (cons b as))))
+
+(defn *
+  "`*` computes the product of vectors and matrices (and scalars as
+  scaling factors). All matrices must have compatible sizes."
+  ([a b] (cond (and (matrix? a) (matrix? b))
+               (if (= (second (size a)) (first (size b)))
+                 (Matrix. (dotom .mmul a ^DoubleMatrix (me b)))
+                 (throw+ {:exception "Matrix products must have compatible sizes."
+                          :asize (size a)
+                          :bsize (size b)}))
+               (matrix? a) (Matrix.
+                            (dotom .mmul a (double b)))
+               (matrix? b) (Matrix.
+                            (dotom .mmul b (double a)))
+               :else       (clojure.core/* a b)))
+  ([a b & as] (reduce * a (cons b as))))
+
+(defn dot
+  "`dot` computes the inner product between two vectors. This is
+  extended to work on matrices considered as `nm`-dimensional
+  vectors."
+  [^Matrix m1 ^Matrix m2]
+  (dotom .dot m1 ^DoubleMatrix (me m2)))
+
+;;; We can also create random matrices of particular classes. For
+;;; instance, `rspectral` allows for the creation of random square
+;;; matrices with particular spectra.
+
+(defn rreflection
+  "`(rreflection n)` creates a random `n`-dimensional Householder
+  reflection."
+  [n]
+  (let [v (Geometry/normalize (DoubleMatrix/randn n))]
+    (Matrix.
+     (.sub (DoubleMatrix/eye n) (.mmul (.mmul v (.transpose v)) (double 2))))))
+
+(defn rspectral
+  "`rspectral` creates a random matrix with a particular spectrum, or,
+  if only an integer `n` is passed, then it creates a random `n`x`n`
+  positive definite matrix with a random spectrum. The orthogonal
+  matrices are generated by using `2n` composed Householder
+  reflections."
+  [n-or-spectrum]
+  (let [[n spectrum]
+        (if (sequential? n-or-spectrum)
+          [(count n-or-spectrum) n-or-spectrum]
+          [n-or-spectrum (repeatedly n-or-spectrum clojure.core/rand)])
+
+        V ^DoubleMatrix
+        (nth (iterate (fn [^DoubleMatrix prod]
+                        (.mmul prod ^DoubleMatrix (me (rreflection n))))
+                      (DoubleMatrix/eye n))
+             (clojure.core/* 2 n))
+        
+        L (DoubleMatrix/diag
+           (DoubleMatrix.
+            ^doubles (into-array Double/TYPE spectrum)))
+        A (Matrix. (-> V (.mmul L) (.mmul (.transpose V))))]
+    (if (every? pos? spectrum)
+      (positive A)
+      A)))
 
 (defn solve
   "`solve` solves the equation `Ax = B` for the column `Matrix`
   `x`. Positivity and symmetry hints on `A` will cause `solve` to use
   optimized LAPACK routines."
   [^Matrix A ^Matrix B]
-  (cond
-   (positive? A)  (Solve/solvePositive ^DoubleMatrix (me A)
-                                       ^DoubleMatrix (me B))
-   (symmetric? A) (Solve/solveSymmetric ^DoubleMatrix (me A)
+  (Matrix.
+   (cond
+    (positive? A)  (Solve/solvePositive ^DoubleMatrix (me A)
                                         ^DoubleMatrix (me B))
-   :else          (Solve/solve ^DoubleMatrix (me A)
-                               ^DoubleMatrix (me B))))
+    (symmetric? A) (Solve/solveSymmetric ^DoubleMatrix (me A)
+                                         ^DoubleMatrix (me B))
+    :else          (Solve/solve ^DoubleMatrix (me A)
+                                ^DoubleMatrix (me B)))))
+
+(defn i
+  "`i` computes the inverse of a matrix. This is done via Gaussian
+  elmination through the `solve` function. It can be numerically very
+  unstable if the matrix is nearly singular."
+  [^Matrix mat]
+  (if (not (square? mat))
+    (throw+ {:exception "Cannot invert a non-square matrix."})
+    (let [[n _] (size mat)]
+      (solve mat (id n)))))
 
 (defn eigen
   "`eigen` computes the eigensystem (or generalized eigensystem) for a
@@ -593,7 +698,7 @@
   spectrum."
   ([^DoubleMatrix A]
      (cond
-      (symmetric? A) (let [[vecs vals] (map #(Matrix. %)
+      (symmetric? A) (let [[vecs vals] (clojure.core/map #(Matrix. %)
                                             (seq (dotom Eigen/symmetricEigenvectors A)))]
                        {:vectors vecs :values (diag vals)})
       :else          (let [[^ComplexDoubleMatrix vecs ^ComplexDoubleMatrix vals]
@@ -614,11 +719,69 @@
            B (maybe-symmetric B)]
        (if (and (symmetric? A) (symmetric? B))
          (let [[vecs vals]
-               (map #(Matrix. %)
+               (clojure.core/map #(Matrix. %)
                     (seq (Eigen/symmetricGeneralizedEigenvectors ^DoubleMatrix (me A)
                                                                  ^DoubleMatrix (me B))))]
            {:vectors vecs :values (as-vec vals)})
          (throw+ {:error "Cannot do generalized eigensystem for non-symmetric matrices."})))))
+
+(defn svd
+  "`(svd A)` computes the sparse singular value decomposition of `A`
+  returning a map with keys `{:values L :left U :right V}` such that
+  `A = U (diag L) V`. If `(size A)` is `[n m]` and the rank of `A` is
+  `k`, we have the size of `U` as `[n k]`, `(diag L)` as `[k k]`,
+  and `(t V)` as `[k m]`."
+  [^Matrix A]
+  (let [[U L V] (dotom Singular/sparseSVD A)
+        left (Matrix. U)
+        right (Matrix. V)
+        values (seq (.toArray L))]
+    {:left left
+     :right right
+     :values values
+     :rank (count values)}))
+
+(defn rank
+  "`(rank A)` is the rank of matrix `A` as computed by `svd`."
+  [^Matrix A] (:rank (svd A)))
+
+(defn- complex-power
+  "`complex-power` computes `z^e` for some complex number `z` and
+  double exponent `e`."
+  [^ComplexDouble z ^double e]
+  (let [r (.real z)
+        i (.imag z)
+        m (Math/sqrt (clojure.core/+ (Math/pow r 2) (Math/pow i 2)))
+        a (Math/atan2 i r)
+        m2 (Math/pow m e)
+        a2 (clojure.core/* a e)]
+    (ComplexDouble. (clojure.core/* m2 (Math/cos a2))
+                    (clojure.core/* m2 (Math/sin a2)))))
+
+(defn pow
+  "`(pow A e)` computes the `e`th matrix power of the square matrix
+  `A` using Eigendecomposition. `e` need not be an integer."
+  [^Matrix A e]
+  (if (not (square? A))
+    (throw+ {:exception "Cannot take power of non-square matrix."
+             :size (size A)})
+    (let [[n _] (size A)
+
+          [^ComplexDoubleMatrix V
+           ^ComplexDoubleMatrix L]
+          (seq (dotom Eigen/eigenvectors A))
+
+          new-spect (clojure.core/map #(complex-power % e)
+                                      (seq (.toArray (.diag L))))]
+      ;; Update L with the new spectrum
+      (doseq [i (range n)]
+        (.put L i i (nth new-spect i)))
+      ;; Compute the product
+      (-> V
+          (.mmul L)
+          (.mmul (.transpose V))
+          .real
+          Matrix.))))
 
 (defn cholesky
   "`(cholesky A)` is the Cholesky square root of a matrix, `U` such
@@ -629,6 +792,18 @@
     (if (positive? mat)
       (Matrix. (dotom Decompose/cholesky mat))
       (throw+ {:exception "Cholesky decompositions require positivity."}))))
+
+(defn lu
+  "`(lu A)` computes the LU decomposition of `A`, returning `{:p P :l L :u
+  U}` such that `A = PLU`."
+  [^Matrix mat]
+  (if (not (square? mat))
+    (throw+ {:exception "Cannot compute LU decomposition of a non-square matrix."
+             :size (size mat)})
+    (let [lu (dotom Decompose/lu mat)]
+      {:p (Matrix. ^DoubleMatrix (.p lu))
+       :l (Matrix. ^DoubleMatrix (.l lu))
+       :u (Matrix. ^DoubleMatrix (.u lu))})))
 
 ;;; # Printing the matrices
 ;;;
@@ -663,11 +838,11 @@
   ([^Matrix mat nbits prec]
      (let [[n m] (size mat)
            small-rows (< n (* nbits 2))
-           small-cols (< m (* nbits 2))
-           rowset (if (< n (* nbits 2))
+           small-cols (< m (clojure.core/* nbits 2))
+           rowset (if (< n (clojure.core/* nbits 2))
                     (range n)
                     (concat (range nbits) (range (clojure.core/- n nbits) n)))
-           colset (if (< m (* nbits 2))
+           colset (if (< m (clojure.core/* nbits 2))
                     (range m)
                     (concat (range nbits) (range (clojure.core/- m nbits) m)))
            submat (apply hstack (cols (apply vstack (rows mat rowset)) colset))
@@ -688,7 +863,7 @@
              (do (doseq [j (range nbits)]
                    (print (format fmt (slice submat i j))))
                  (print " . ")
-                 (doseq [j (range nbits (* 2 nbits))]
+                 (doseq [j (range nbits (clojure.core/* 2 nbits))]
                    (print (format fmt (slice submat i j))))))
            (print "\n"))
          (do (doseq [i (range nbits)]
@@ -698,17 +873,17 @@
                  (do (doseq [j (range nbits)]
                        (print (format fmt (slice submat i j))))
                      (print " . ")
-                     (doseq [j (range nbits (* 2 nbits))]
+                     (doseq [j (range nbits (clojure.core/* 2 nbits))]
                        (print (format fmt (slice submat i j))))))
                (print "\n"))
              (println " ... ")
-             (doseq [i (range nbits (* 2 nbits))]
+             (doseq [i (range nbits (clojure.core/* 2 nbits))]
                (if small-cols
                  (doseq [j (range m)]
                    (print (format fmt (slice submat i j))))
                  (do (doseq [j (range nbits)]
                        (print (format fmt (slice submat i j))))
                      (print " . ")
-                     (doseq [j (range nbits (* 2 nbits))]
+                     (doseq [j (range nbits (clojure.core/* 2 nbits))]
                        (print (format fmt (slice submat i j))))))
                (print "\n")))))))

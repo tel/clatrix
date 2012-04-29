@@ -6,6 +6,7 @@
 (let [[n m] [10 15]
       ns n
       A (c/rand n m)
+      B (c/* (c/t A) A)
       S (c/rand ns ns)
       ridx (range n)
       cidx (range m)]
@@ -22,10 +23,10 @@
   (given (c/id n)
          (expect c/size [n n]
                  c/trace (double n)))
-  
+
   ;; conversion from Clojure types is invertible
   (expect A (c/matrix (c/dense A)))
-
+  
   ;; diagonal structure becomes 2-parity involutive
   (expect (c/diag A) (c/diag (c/diag (c/diag A))))
 
@@ -57,5 +58,32 @@
                          [r2]
                          [r3]])))
   ;; linear algebra
-  (expect (double (* 7 20)) (c/trace (c/+ (c/id 20) (c/id 20) 5)))
-  (expect A (c/- (c/+ A A) A)))
+  (expect A (c/- (c/+ A A) A))
+  (expect [m m] (c/size (c/* (c/t A) A)))
+  (expect [n n] (c/size (c/* A (c/t A))))
+  (expect A (c/* (c/id n) A))
+  (expect A (c/* A (c/id m)))
+  (expect A (c/* (c/id n) A (c/id m)))
+
+  ;; LU decomposition
+  (let [lu (c/lu B)]
+    (expect B (c/* (:p lu) (:l lu) (:u lu))))
+
+  ;; SVD decomposition
+  (let [svd (c/svd A)]
+    (expect A (c/* (:left svd)
+                   (c/diag (:values svd))
+                   (c/t (:right svd)))))
+  
+  ;; matrix powers
+  (expect (c/* B B) (c/pow B 2))
+
+  ;; properties of special random matrices
+  (let [H (c/rreflection n)
+        P (c/rspectral n)
+        G (c/cholesky P)
+        I (c/rspectral (repeat n (double 1)))]
+    (expect (c/id n) (c/* H (c/t H)))
+    (expect (partial every? pos?) (:values (c/eigen P)))
+    (expect P (c/* (c/t G) G))
+    (expect (c/id n) I)))
