@@ -32,8 +32,8 @@
 
   ;; structure algebraic constraints
   (expect A (c/t (c/t A)))
-  (expect A (apply c/hstack (c/cols A)))
-  (expect A (apply c/vstack (c/rows A)))
+  (expect A (c/hstack (c/cols A)))
+  (expect A (c/vstack (c/rows A)))
 
   ;; permutions
   (expect A (c/permute A :r ridx))
