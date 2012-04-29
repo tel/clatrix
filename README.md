@@ -12,47 +12,50 @@ For now, you can read the
 at a few examples below.
 
 ```Clojure
-clatrix.core> (let [A (matrix (repeat 5 (range 10)))] (pp A))
- A 5x10 matrix
- -------------
- 0.00e+00  1.00e+00  2.00e+00  .  7.00e+00  8.00e+00  9.00e+00 
- 0.00e+00  1.00e+00  2.00e+00  .  7.00e+00  8.00e+00  9.00e+00 
- 0.00e+00  1.00e+00  2.00e+00  .  7.00e+00  8.00e+00  9.00e+00 
- 0.00e+00  1.00e+00  2.00e+00  .  7.00e+00  8.00e+00  9.00e+00 
- 0.00e+00  1.00e+00  2.00e+00  .  7.00e+00  8.00e+00  9.00e+00 
-nil
+(in-ns 'clatrix.core)
+
+(let [A (matrix (repeat 5 (range 10)))] (pp A))
+
+; A 5x10 matrix
+; -------------
+; 0.00e+00  1.00e+00  2.00e+00  .  7.00e+00  8.00e+00  9.00e+00 
+; 0.00e+00  1.00e+00  2.00e+00  .  7.00e+00  8.00e+00  9.00e+00 
+; 0.00e+00  1.00e+00  2.00e+00  .  7.00e+00  8.00e+00  9.00e+00 
+; 0.00e+00  1.00e+00  2.00e+00  .  7.00e+00  8.00e+00  9.00e+00 
+; 0.00e+00  1.00e+00  2.00e+00  .  7.00e+00  8.00e+00  9.00e+00 
+
 
 (pp (from-indices 5 5 *))
- A 5x5 matrix
- ------------
- 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 
- 0.00e+00  1.00e+00  2.00e+00  3.00e+00  4.00e+00 
- 0.00e+00  2.00e+00  4.00e+00  6.00e+00  8.00e+00 
- 0.00e+00  3.00e+00  6.00e+00  9.00e+00  1.20e+01 
- 0.00e+00  4.00e+00  8.00e+00  1.20e+01  1.60e+01 
-nil
 
-clatrix.core> (time (solve (rand 1000 1000) (rand 1000)))
-"Elapsed time: 158.216 msecs"
-#<Matrix [1000 1]>
+; A 5x5 matrix
+; ------------
+; 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 
+; 0.00e+00  1.00e+00  2.00e+00  3.00e+00  4.00e+00 
+; 0.00e+00  2.00e+00  4.00e+00  6.00e+00  8.00e+00 
+; 0.00e+00  3.00e+00  6.00e+00  9.00e+00  1.20e+01 
+; 0.00e+00  4.00e+00  8.00e+00  1.20e+01  1.60e+01 
 
-clatrix.core> (time (rank (rand 1000 1000)))
-"Elapsed time: 13469.51 msecs"
-1000
+(time (solve (rand 1000 1000) (rand 1000)))
 
-clatrix.core> (def A (rand 10 14))
-clatrix.core> (def B (* A (t A)))
-clatrix.core> (def P (rspectral 10))
-clatrix.core> (def G (cholesky P))
+; "Elapsed time: 158.216 msecs"
+; #<Matrix [1000 1]>
 
-clatrix.core> (= A (c/t (c/t A)))
-true
-clatrix.core> (= A (hstack (cols A)))
-true
-clatrix.core> (let [{P :p L :l U :u} (lu B)] (= B (* P L U)))
-true
-clatrix.core> (= P (* (t G) G))
-true
+(time (rank (rand 1000 1000)))
+
+; "Elapsed time: 13469.51 msecs"
+; 1000
+
+(let [A (rand 10 14)
+      B (* A (t A))
+      P (rspectral 10)
+      G (cholesky P)
+      lu (lu B)]
+  (and (= A (c/t (c/t A)))
+       (= A (hstack (cols A)))
+       (= B (* (:p lu) (:l lu) (:u lu)))
+       (= P (* (t G) G))))
+
+; true
 ```
 
 ## License
