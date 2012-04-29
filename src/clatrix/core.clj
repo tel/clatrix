@@ -167,11 +167,11 @@
   as `pq = nm`."
   [^Matrix A p q]
   (let [[n m] (size A)]
-    (if (= (* n m) (* p q))
+    (if (= (clojure.core/* n m) (clojure.core/* p q))
       (dotom A p q)
       (throw+ {:exception "Cannot change the number of elements during a reshape."
-               :previous (* n m)
-               :new (* p q)}))))
+               :previous (clojure.core/* n m)
+               :new (clojure.core/* p q)}))))
 
 ;;; ## Sparse and indexed builds
 ;;;
