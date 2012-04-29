@@ -416,7 +416,11 @@
   constrained to be the proper size. Any integers which do not share a
   row or a column with a larger matrix are assumed to be 1x1 sized."
   [blockspec]
-  `(block-fn ~(vec (clojure.core/map #(vec (clojure.core/map (fn [e] (if (iswild e) 0 e)) %)) blockspec))))
+  `(block-fn
+    ~(vec (clojure.core/map
+           #(vec (clojure.core/map
+                  (fn [e] (if (iswild e) 0 e)) %))
+           blockspec))))
 
 
 ;;; # Slicing 
