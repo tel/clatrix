@@ -46,10 +46,10 @@ at a few examples below.
 ; 1000
 
 (let [A (rand 10 14)
-      B (* A (t A))
-      P (rspectral 10)
-      G (cholesky P)
-      lu (lu B)]
+      B (* A (t A))     ; B is symmetric
+      lu (lu B)
+      P (rspectral 10)  ; `respectral` makes positive definite matrices
+      G (cholesky P)]   ; so we can get their square root
   (and (= A (c/t (c/t A)))
        (= A (hstack (cols A)))
        (= B (* (:p lu) (:l lu) (:u lu)))
