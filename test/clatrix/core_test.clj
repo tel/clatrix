@@ -1,24 +1,66 @@
 (ns clatrix.core-test
   (:use expectations)
-  (:import [clatrix.core Matrix])
+  (:import [clatrix.core Matrix]
+           [java.io StringReader PushbackReader])
   (:require [clatrix.core :as c]))
+
+(defn read* [str]
+  (read (PushbackReader. (StringReader. str))))
 
 (let [[n m] [10 15]
       ns n
-      A (c/rand n m)
+      A (c/rnorm n m)
       B (c/* (c/t A) A)
-      S (c/rand ns ns)
+      S (c/rnorm ns ns)
+      p (c/rnorm m)
+      q (c/rnorm ns)
       ridx (range n)
       cidx (range m)]
 
   ;; properties of A/S
   (expect Matrix A)
   (expect Matrix S)
+  (expect Matrix p)
+  (expect Matrix q)
+  
   (given A
-         (expect c/size [n m]))
+         (expect c/size [n m]
+                 c/matrix? true
+                 c/square? false
+                 c/column? false
+                 c/vector? false
+                 c/row?    false))
   (given S
-         (expect c/size [ns ns]))
+         (expect c/size [ns ns]
+                 c/matrix? true
+                 c/square? true
+                 c/column? false
+                 c/vector? false
+                 c/row?    false))
 
+  (given p
+         (expect c/size [m 1]
+                 c/matrix? true
+                 c/square? false
+                 c/column? true
+                 c/vector? true
+                 c/row?    false))
+
+  (given q
+         (expect c/size [ns 1]
+                 c/matrix? true
+                 c/square? false
+                 c/column? true
+                 c/vector? true
+                 c/row?    false))
+
+  (let [z (rand)]
+    (c/set A 0 0 z)
+    (expect z (c/get A 0 0)))
+
+  (expect `(c/matrix ~(map #(map double %) [[1 2] [3 4]]))
+          (read* (str (c/matrix [[1 2] [3 4]]))))
+  
   ;; properties of id
   (given (c/id n)
          (expect c/size [n n]
@@ -26,15 +68,47 @@
 
   ;; conversion from Clojure types is invertible
   (expect A (c/matrix (c/dense A)))
+
+  ;; `as-vec` knows about columns and rows
+  (expect (c/as-vec p) (flatten (c/as-vec p)))
+  (expect (c/as-vec q) (flatten (c/as-vec q)))
+  (expect false? (= (c/as-vec A) (flatten (c/as-vec A))))
+  (expect false? (= (c/as-vec S) (flatten (c/as-vec S))))
+
+  (expect (map double (range 10)) (c/as-vec (c/column (range 10))))
   
   ;; diagonal structure becomes 2-parity involutive
   (expect (c/diag A) (c/diag (c/diag (c/diag A))))
+
+  ;; other diagonal invariants
+  (expect (c/diag A) (c/diag (c/t A)))
+  (expect (c/trace S) (c/trace (c/t S)))
 
   ;; structure algebraic constraints
   (expect A (c/t (c/t A)))
   (expect A (c/hstack (c/cols A)))
   (expect A (c/vstack (c/rows A)))
 
+  ;; constants
+  (expect (double (* n m)) (reduce + (map (partial reduce +)
+                                          (c/dense (c/constant n m 1)))))
+  (expect (double (* n m 5)) (reduce + (map (partial reduce +)
+                                            (c/dense (c/constant n m 5)))))
+  (expect (double (* n m)) (reduce + (map (partial reduce +)
+                                          (c/dense (c/ones n m)))))
+  (expect (double 0) (reduce + (map (partial reduce +)
+                                    (c/dense (c/zeros n m)))))
+
+  (expect (double n) (reduce + (map (partial reduce +) (c/dense (c/id n)))))
+  (expect (double (* n 5)) (reduce + (map (partial reduce +)
+                                          (c/dense (c/* 5 (c/id n))))))
+  (expect (double (* n 5)) (reduce + (map (partial reduce +)
+                                          (c/dense (c/map (partial * 5) (c/id n))))))
+
+  ;; norm and normalize
+  (expect (double m)
+          (reduce + (map c/norm (c/cols (c/normalize A)))))
+  
   ;; permutions
   (expect A (c/permute A :r ridx))
   (expect A (c/permute A :c cidx))
@@ -70,10 +144,15 @@
     (expect B (c/* (:p lu) (:l lu) (:u lu))))
 
   ;; SVD decomposition
-  (let [svd (c/svd A)]
-    (expect A (c/* (:left svd)
-                   (c/diag (:values svd))
-                   (c/t (:right svd)))))
+  ;; -----------------
+  ;; Doesn't hold if Z has negative entries. Why not?
+  (let [Z (c/rand 4 7)]
+    (let [{left :left values :values right :right} (c/svd Z)]
+      (expect #(> 1.0E-12 (Math/abs %))
+              (- (c/norm Z)
+                 (c/norm (c/* left
+                              (c/diag values)
+                              (c/t right)))))))
   
   ;; matrix powers
   (expect (c/* B B) (c/pow B 2))

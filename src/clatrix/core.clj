@@ -1,5 +1,5 @@
 (ns clatrix.core
-  (:refer-clojure :exclude [get set map-indexed map rand vector? + - *])
+  (:refer-clojure :exclude [get set map-indexed map rand vector? + - * pp])
   (:use [slingshot.slingshot :only [throw+]])
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
             Decompose Decompose$LUDecomposition Eigen Solve Geometry
@@ -23,8 +23,8 @@
 (defrecord Matrix [^DoubleMatrix me]
   Object
   (toString [^Matrix mat]
-    (str (list 'matrix
-               (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (me mat)))))))))
+    (str (list `matrix
+               (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat)))))))))
 
 (defn- me [^Matrix mat]
   (.me mat))
@@ -64,7 +64,7 @@
 (promote-mfun* defn- ncols .columns)
 (promote-mfun* defn- nrows .rows)
 (defn size    [^Matrix m] [(nrows m) (ncols m)])
-(defn vector? [^Matrix m] (some #(== 1 %) (size m)))
+(defn vector? [^Matrix m] (let [[n m] (size m)] (or (== n 1) (== m 1))))
 (defn row?    [^Matrix m] (== 1 (first (size m))))
 (defn column? [^Matrix m] (== 1 (second (size m))))
 (defn square? [^Matrix m] (reduce == (size m)))
@@ -143,7 +143,7 @@
       (Matrix. (DoubleMatrix/diag (DoubleMatrix. ^doubles (into-array Double/TYPE di)))))))
 
 (promote-cfun* defn  ones DoubleMatrix/ones)
-(promote-cfun* defn- zeros DoubleMatrix/zeros)
+(promote-cfun* defn zeros DoubleMatrix/zeros)
 (defn constant
   "`constant` creates a column or matrix with every element equal to
    the same constant value."
@@ -191,7 +191,8 @@
   [^long n ^long m specs]
   (let [m (zeros n m)]
     (doseq [[i j v] specs]
-      (set m i j v))))
+      (set m i j v))
+    m))
 
 (defn from-indices
   "`from-indices` builds an `n`x`m` matrix from a function mapping the
@@ -552,7 +553,7 @@
   resulting elements."
   [fun ^Matrix mat]
   (let [[n m] (size mat)]
-    (from-sparse
+    (from-sparse n m
      (for [i (range n)
            j (range m)]
        [i j (fun i j (get mat i j))]))))
@@ -561,7 +562,11 @@
   "`map` is a specialization of `map-indexed` where the function does
   not get passed the indices."
   [fun ^Matrix mat]
-  (clojure.core/map-indexed #(fun %3) mat))
+  (let [[n m] (size mat)]
+    (from-sparse n m
+     (for [i (range n)
+           j (range m)]
+       [i j (fun (get mat i j))]))))
 
 ;;; # Linear algebra
 ;;;
