@@ -166,12 +166,13 @@
     ;; multiplication over the rectangular forms of the complex
     ;; eigenvector (V) and eigenvalue (L) matrices
     ;;
-    ;;   (V + iV I)(L + iL I)(Vt - iVt I)
+    ;; = Q D Q*
+    ;; = (V + iV I) (L + iL I) (Vt - iVt I)
     ;; = I (iV iL iVt + iV  L  Vt +  V iL  Vt -  V  L iVt)
-    ;; +   (V   L  Vt +  V iL iVt + iV  L iVt - iV iL  Vt)
+    ;; +   ( V  L  Vt +  V iL iVt + iV  L iVt - iV iL  Vt)
     ;;
     ;; where `iA` is the imaginary part of some matrix with real part
-    ;; `A`.
+    ;; `A` and I the imaginary unit.
     ;;
     ;; The complex part must vanish (since we cannot represent complex
     ;; matrices to take their eigensystems in the first place) so we
