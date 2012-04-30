@@ -7,6 +7,9 @@
 (defn read* [str]
   (read (PushbackReader. (StringReader. str))))
 
+(defn truthy? [v]
+  (not (or (false? v) (nil? v))))
+
 (let [[n m] [10 15]
       ns n
       A (c/rnorm n m)
@@ -143,8 +146,53 @@
   (let [lu (c/lu B)]
     (expect B (c/* (:p lu) (:l lu) (:u lu))))
 
-  ;; SVD decomposition
-  ;; -----------------
+  ;; Eigen decomposition
+  (let [Ss   (c/symmetric (c/* S (c/t S)))
+        seig (c/eigen Ss)
+        Co   (c/matrix [[0 2] [-2 0]]) ; has complex eigenvalues/vectors
+        ceig (c/eigen Co)]
+    (expect nil? (:ivalues  seig))
+    (expect nil? (:ivectors seig))
+    ;; Symmetric Eigenreconstruction is easy
+    (expect Ss (c/* (:vectors seig)
+                    (c/diag (:values seig))
+                    (c/t (:vectors seig))))
+    (expect truthy? (:ivalues  ceig))
+    (expect truthy? (:ivectors ceig))
+
+    ;; Asymmetric eigenreconstruction
+    ;; 
+    ;; To see this formula, consider distributing matrix
+    ;; multiplication over the rectangular forms of the complex
+    ;; eigenvector (V) and eigenvalue (L) matrices
+    ;;
+    ;;   (V + iV I)(L + iL I)(Vt - iVt I)
+    ;; = I (iV iL iVt + iV  L  Vt +  V iL  Vt -  V  L iVt)
+    ;; +   (V   L  Vt +  V iL iVt + iV  L iVt - iV iL  Vt)
+    ;;
+    ;; where `iA` is the imaginary part of some matrix with real part
+    ;; `A`.
+    ;;
+    ;; The complex part must vanish (since we cannot represent complex
+    ;; matrices to take their eigensystems in the first place) so we
+    ;; take only the second sum, which, notably, reduces to the normal
+    ;; form if the imaginary parts vanish.
+    (expect Co (c/+ (c/* (:vectors ceig)
+                         (c/diag (:values ceig))
+                         (c/t (:vectors ceig)))
+                    (c/* (:vectors ceig)
+                         (c/diag (:ivalues ceig))
+                         (c/t (:ivectors ceig)))
+                    (c/* (:ivectors ceig)
+                         (c/diag (:values ceig))
+                         (c/t (:ivectors ceig)))
+                    (c/* -1
+                         (:ivectors ceig)
+                         (c/diag (:ivalues ceig))
+                         (c/t (:vectors ceig))))))
+  
+  ;; SVD
+  ;; 
   ;; Doesn't hold if Z has negative entries. Why not?
   (let [Z (c/rand 4 7)]
     (let [{left :left values :values right :right} (c/svd Z)]
