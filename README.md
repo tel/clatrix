@@ -1,8 +1,8 @@
 # Clatrix matrix
 
-A stupid name for a smart matrix library, because Clojure needs smart
-matrices. Being implemented as a thin wrapper around the native BLAS
-hooks of [jblas](http://github.com/mikiobraun/jblas) gives it
+A stupid name for a smart matrix library, because who doesn't love
+smart matrices? Being implemented as a thin wrapper around the native
+BLAS hooks of [jblas](http://github.com/mikiobraun/jblas) gives it
 speed. Being implemented in Clojure makes it clever.
 
 ## Usage
