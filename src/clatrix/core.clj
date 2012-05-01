@@ -606,22 +606,6 @@
                :else       (clojure.core/+ a b)))
   ([a b & as] (reduce + a (cons b as))))
 
-(defn -
-  "`-` differences vectors and matrices (and scalars as if they were
-  constant matrices). All the matrices must have the same size."
-  ([a b] (cond (and (matrix? a) (matrix? b))
-               (if (= (size a) (size b))
-                 (Matrix. (dotom .sub a ^DoubleMatrix (me b)))
-                 (throw+ {:exception "Matrices of different sizes cannot be differenced."
-                          :asize (size a)
-                          :bsize (size b)}))
-               (matrix? a) (Matrix.
-                            (dotom .sub a (double b)))
-               (matrix? b) (Matrix.
-                            (dotom .rsub b (double a)))
-               :else       (clojure.core/- a b)))
-  ([a b & as] (reduce - a (cons b as))))
-
 (defn *
   "`*` computes the product of vectors and matrices (and scalars as
   scaling factors). All matrices must have compatible sizes."
@@ -637,6 +621,23 @@
                             (dotom .mmul b (double a)))
                :else       (clojure.core/* a b)))
   ([a b & as] (reduce * a (cons b as))))
+
+(defn -
+  "`-` differences vectors and matrices (and scalars as if they were
+  constant matrices). All the matrices must have the same size."
+  ([a] (* -1 a))
+  ([a b] (cond (and (matrix? a) (matrix? b))
+               (if (= (size a) (size b))
+                 (Matrix. (dotom .sub a ^DoubleMatrix (me b)))
+                 (throw+ {:exception "Matrices of different sizes cannot be differenced."
+                          :asize (size a)
+                          :bsize (size b)}))
+               (matrix? a) (Matrix.
+                            (dotom .sub a (double b)))
+               (matrix? b) (Matrix.
+                            (dotom .rsub b (double a)))
+               :else       (clojure.core/- a b)))
+  ([a b & as] (reduce - a (cons b as))))
 
 (defn dot
   "`dot` computes the inner product between two vectors. This is

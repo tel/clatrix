@@ -142,6 +142,8 @@
   (expect A (c/* A (c/id m)))
   (expect A (c/* (c/id n) A (c/id m)))
 
+  (expect (c/constant n m 0) (c/+ A (c/- A)))
+  
   ;; LU decomposition
   (let [lu (c/lu B)]
     (expect B (c/* (:p lu) (:l lu) (:u lu))))
@@ -194,14 +196,18 @@
   
   ;; SVD
   ;; 
-  ;; Doesn't hold if Z has negative entries. Why not?
-  (let [Z (c/rand 4 7)]
+  ;; Sometimes this doesn't hold when Q has negative entries. Why not?
+  ;; Jblas problem?  Or is my expectation wrong?
+  (let [Z (c/rand 4 7)
+        Q (c/rnorm 4 7)]
     (let [{left :left values :values right :right} (c/svd Z)]
-      (expect #(> 1.0E-12 (Math/abs %))
-              (- (c/norm Z)
-                 (c/norm (c/* left
-                              (c/diag values)
-                              (c/t right)))))))
+      (expect Z (c/* left
+                     (c/diag values)
+                     (c/t right))))
+    (let [{left :left values :values right :right} (c/svd Q)]
+      (expect Q (c/* left
+                     (c/diag values)
+                     (c/t right)))))
   
   ;; matrix powers
   (expect (c/* B B) (c/pow B 2))
