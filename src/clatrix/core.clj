@@ -33,7 +33,7 @@
   `(~name ^DoubleMatrix (me ~m) ~@args))
 
 ;;; # Java interop
-;;; 
+;;;
 ;;; Clatrix lifts a lot of methods directly out of JBlas. Here are a
 ;;; few convenience macros used for the thinnest parts of the wrapper.
 (defmacro promote-cfun* [defname name fname]
@@ -46,6 +46,7 @@
 (defmacro promote-mfun* [defname name fname]
   (let [m (gensym)]
     `(~defname ~name [^Matrix ~m] (dotom ~fname ~m))))
+
 
 ;;; # Basics of matrix objects
 ;;;
@@ -147,13 +148,13 @@
 (defn constant
   "`constant` creates a column or matrix with every element equal to
    the same constant value."
-  ([^long n ^double c] 
+  ([^long n ^double c]
      (Matrix.
       (doto (DoubleMatrix/ones n)
         (.muli c))))
-  ([^long n ^long m ^double c] 
+  ([^long n ^long m ^double c]
      (Matrix.
-      (doto (DoubleMatrix/ones n m) 
+      (doto (DoubleMatrix/ones n m)
         (.muli c)))))
 
 (defn id
@@ -210,7 +211,7 @@
 ;;; elementwise independent Unif(0,1) and normal.
 
 (promote-cfun* defn  rand   DoubleMatrix/rand)
-(promote-cfun* defn- randn* DoubleMatrix/randn) 
+(promote-cfun* defn- randn* DoubleMatrix/randn)
 
 (defn rnorm
   "`(rnorm mu sigma n m)` is an `n`x`m` `Matrix` with normally
@@ -307,7 +308,7 @@
           (throw+ {:error "Row index out of bounds" :num-rows n :rowspec r})
           (and c (some #(> % (dec m)) c))
           (throw+ {:error "Column index out of bounds" :num-columns n :colspec c})
-          
+
           :else (permute-cols (permute-rows mat r) c))))
 
 ;;; ### Block matrices
@@ -438,7 +439,7 @@
            blockspec))))
 
 
-;;; # Slicing 
+;;; # Slicing
 ;;;
 ;;; As a more convenient API than looping over `get` and `set`, we
 ;;; have slice notation. This uses wildcard symbols (like in `block`)
@@ -675,7 +676,7 @@
                         (.mmul prod ^DoubleMatrix (me (rreflection n))))
                       (DoubleMatrix/eye n))
              (clojure.core/* 2 n))
-        
+
         L (DoubleMatrix/diag
            (DoubleMatrix.
             ^doubles (into-array Double/TYPE spectrum)))
@@ -911,3 +912,61 @@
                      (doseq [j (range nbits (clojure.core/* 2 nbits))]
                        (print (format fmt (slice submat i j))))))
                (print "\n")))))))
+
+;;;  JBLAS provides several fast and useful mathematical functions,
+;;;  mirroring Java's Math namespace, applied
+;;;  elementwise to the Matrix.  Here we import them.
+;;;  They are provided in a funcional form
+;;;  as well as a mutating form, the latter have i (for in-place)
+;;;  appended to their names.
+
+;;; Helper macro
+(defmacro promote-mffun* [defname name fname]
+  (let [m (gensym)]
+    `(~defname ~name ^Matrix [^Matrix ~m] (Matrix. (dotom ~fname ~m)))))
+
+;;; These are the functional style matrix functions.  They accept a
+;;; matrix and return a new matrix with the function applied element-wise.
+(promote-mffun* defn exp    MatrixFunctions/exp)
+(promote-mffun* defn abs    MatrixFunctions/abs)
+(promote-mffun* defn acos   MatrixFunctions/acos)
+(promote-mffun* defn asin   MatrixFunctions/asin)
+(promote-mffun* defn atan   MatrixFunctions/atan)
+(promote-mffun* defn cbrt   MatrixFunctions/cbrt)
+(promote-mffun* defn ceil   MatrixFunctions/ceil)
+(promote-mffun* defn cos    MatrixFunctions/cos)
+(promote-mffun* defn cosh   MatrixFunctions/cosh)
+(promote-mffun* defn exp    MatrixFunctions/exp)
+(promote-mffun* defn floor  MatrixFunctions/floor)
+(promote-mffun* defn log    MatrixFunctions/log)
+(promote-mffun* defn log10  MatrixFunctions/log10)
+(promote-mffun* defn signum MatrixFunctions/signum)
+(promote-mffun* defn sin    MatrixFunctions/sin)
+(promote-mffun* defn sinh   MatrixFunctions/sinh)
+(promote-mffun* defn sqrt   MatrixFunctions/sqrt)
+(promote-mffun* defn tan    MatrixFunctions/tan)
+(promote-mffun* defn tanh   MatrixFunctions/tanh)
+
+;;; These are the inplace functions.  They mutate the passed
+;;; in matrix with the function.  They are faster
+(promote-mffun* defn exp!    MatrixFunctions/expi)
+(promote-mffun* defn abs!    MatrixFunctions/absi)
+(promote-mffun* defn acos!   MatrixFunctions/acosi)
+(promote-mffun* defn asin!   MatrixFunctions/asini)
+(promote-mffun* defn atan!   MatrixFunctions/atani)
+(promote-mffun* defn cbrt!   MatrixFunctions/cbrti)
+(promote-mffun* defn ceil!   MatrixFunctions/ceili)
+(promote-mffun* defn cos!    MatrixFunctions/cosi)
+(promote-mffun* defn cosh!   MatrixFunctions/coshi)
+(promote-mffun* defn exp!    MatrixFunctions/expi)
+(promote-mffun* defn floor!  MatrixFunctions/floori)
+(promote-mffun* defn log!    MatrixFunctions/logi)
+(promote-mffun* defn log10!  MatrixFunctions/log10i)
+(promote-mffun* defn signum! MatrixFunctions/signumi)
+(promote-mffun* defn sin!    MatrixFunctions/sini)
+(promote-mffun* defn sinh!   MatrixFunctions/sinhi)
+(promote-mffun* defn sqrt!   MatrixFunctions/sqrti)
+(promote-mffun* defn tan!    MatrixFunctions/tani)
+(promote-mffun* defn tanh!   MatrixFunctions/tanhi)
+
+;;; TODO: pow is more complex and not currenty supported

@@ -1,8 +1,8 @@
 (ns clatrix.core-test
   (:use expectations)
+  (:require [clatrix.core :as c])
   (:import [clatrix.core Matrix]
-           [java.io StringReader PushbackReader])
-  (:require [clatrix.core :as c]))
+           [java.io StringReader PushbackReader]))
 
 (defn read* [str]
   (read (PushbackReader. (StringReader. str))))
@@ -25,7 +25,7 @@
   (expect Matrix S)
   (expect Matrix p)
   (expect Matrix q)
-  
+
   (given A
          (expect c/size [n m]
                  c/matrix? true
@@ -63,7 +63,7 @@
 
   (expect `(c/matrix ~(map #(map double %) [[1 2] [3 4]]))
           (read* (str (c/matrix [[1 2] [3 4]]))))
-  
+
   ;; properties of id
   (given (c/id n)
          (expect c/size [n n]
@@ -79,7 +79,7 @@
   (expect false? (= (c/as-vec S) (flatten (c/as-vec S))))
 
   (expect (map double (range 10)) (c/as-vec (c/column (range 10))))
-  
+
   ;; diagonal structure becomes 2-parity involutive
   (expect (c/diag A) (c/diag (c/diag (c/diag A))))
 
@@ -111,7 +111,7 @@
   ;; norm and normalize
   (expect (double m)
           (reduce + (map c/norm (c/cols (c/normalize A)))))
-  
+
   ;; permutions
   (expect A (c/permute A :r ridx))
   (expect A (c/permute A :c cidx))
@@ -143,7 +143,7 @@
   (expect A (c/* (c/id n) A (c/id m)))
 
   (expect (c/constant n m 0) (c/+ A (c/- A)))
-  
+
   ;; LU decomposition
   (let [lu (c/lu B)]
     (expect B (c/* (:p lu) (:l lu) (:u lu))))
@@ -163,7 +163,7 @@
     (expect truthy? (:ivectors ceig))
 
     ;; Asymmetric eigenreconstruction
-    ;; 
+    ;;
     ;; To see this formula, consider distributing matrix
     ;; multiplication over the rectangular forms of the complex
     ;; eigenvector (V) and eigenvalue (L) matrices
@@ -193,9 +193,9 @@
                          (:ivectors ceig)
                          (c/diag (:ivalues ceig))
                          (c/t (:vectors ceig))))))
-  
+
   ;; SVD
-  ;; 
+  ;;
   ;; Sometimes this doesn't hold when Q has negative entries. Why not?
   ;; Jblas problem?  Or is my expectation wrong?
   (let [Z (c/rand 4 7)
@@ -208,7 +208,7 @@
       (expect Q (c/* left
                      (c/diag values)
                      (c/t right)))))
-  
+
   ;; matrix powers
   (expect (c/* B B) (c/pow B 2))
 
@@ -221,3 +221,46 @@
     (expect (partial every? pos?) (:values (c/eigen P)))
     (expect P (c/* (c/t G) G))
     (expect (c/id n) I)))
+
+;; Matrix Functions
+(let [v (c/column (range 9))]
+
+  (expect (Math/exp 7.0)    (c/get (c/exp v) 7 0))
+  (expect (Math/abs 7.0)    (c/get (c/abs v) 7 0))
+  (expect (Math/acos 1.0)   (c/get (c/acos v) 1 0))
+  (expect (Math/asin 1.0)   (c/get (c/asin v) 1 0))
+  (expect (Math/atan 7.0)   (c/get (c/atan v) 7 0))
+  (expect (Math/cbrt 7.0)   (c/get (c/cbrt v) 7 0))
+  (expect (Math/ceil 7.0)   (c/get (c/ceil v) 7 0))
+  (expect (Math/cos 7.0)    (c/get (c/cos v) 7 0))
+  (expect (Math/cosh 7.0)   (c/get (c/cosh v) 7 0))
+  (expect (Math/exp 7.0)    (c/get (c/exp v) 7 0))
+  (expect (Math/floor 7.0)  (c/get (c/floor v) 7 0))
+  (expect (Math/log 7.0)    (c/get (c/log v) 7 0))
+  (expect (Math/log10 7.0)  (c/get (c/log10 v) 7 0))
+  (expect (Math/signum 7.0) (c/get (c/signum v) 7 0))
+  (expect (Math/sin 7.0)    (c/get (c/sin v) 7 0))
+  (expect (Math/sinh 7.0)   (c/get (c/sinh v) 7 0))
+  (expect (Math/sqrt 7.0)   (c/get (c/sqrt v) 7 0))
+  (expect (Math/tanh 7.0)   (c/get (c/tanh v) 7 0))
+
+  ;; These are the mutating versions, so pass in a fresh
+  ;; matrix each time
+  (expect (Math/exp 7.0)    (c/get (c/exp! (c/column (range 9))) 7 0))
+  (expect (Math/abs 7.0)    (c/get (c/abs! (c/column (range 9))) 7 0))
+  (expect (Math/acos 1.0)   (c/get (c/acos! (c/column (range 9))) 1 0))
+  (expect (Math/asin 1.0)   (c/get (c/asin! (c/column (range 9))) 1 0))
+  (expect (Math/atan 7.0)   (c/get (c/atan! (c/column (range 9))) 7 0))
+  (expect (Math/cbrt 7.0)   (c/get (c/cbrt! (c/column (range 9))) 7 0))
+  (expect (Math/ceil 7.0)   (c/get (c/ceil! (c/column (range 9))) 7 0))
+  (expect (Math/cos 7.0)    (c/get (c/cos! (c/column (range 9))) 7 0))
+  (expect (Math/cosh 7.0)   (c/get (c/cosh! (c/column (range 9))) 7 0))
+  (expect (Math/exp 7.0)    (c/get (c/exp! (c/column (range 9))) 7 0))
+  (expect (Math/floor 7.0)  (c/get (c/floor! (c/column (range 9))) 7 0))
+  (expect (Math/log 7.0)    (c/get (c/log! (c/column (range 9))) 7 0))
+  (expect (Math/log10 7.0)  (c/get (c/log10! (c/column (range 9))) 7 0))
+  (expect (Math/signum 7.0) (c/get (c/signum! (c/column (range 9))) 7 0))
+  (expect (Math/sin 7.0)    (c/get (c/sin! (c/column (range 9))) 7 0))
+  (expect (Math/sinh 7.0)   (c/get (c/sinh! (c/column (range 9))) 7 0))
+  (expect (Math/sqrt 7.0)   (c/get (c/sqrt! (c/column (range 9))) 7 0))
+  (expect (Math/tanh 7.0)   (c/get (c/tanh! (c/column (range 9))) 7 0)))
