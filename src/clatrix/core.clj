@@ -70,11 +70,15 @@
 (defn column? [^Matrix m] (== 1 (second (size m))))
 (defn square? [^Matrix m] (reduce == (size m)))
 
+(defn- int-arraytise
+  "Convert a seq to int array or pass through for a number."
+  [x] (if (coll? x) (int-array x) x))
+
 ;;; The most basic matrix operation is elementwise getting and
 ;;; setting; setting should be dissuaded as well for a Clojure
 ;;; wrapper, but it's too useful to hide.
-(defn get [^Matrix m ^long r ^long c]
-  (dotom .get m r c))
+(defn get [^Matrix m r c]
+  (dotom .get m (int-arraytise r) (int-arraytise c)))
 (defn set [^Matrix m ^long r ^long c ^double e]
   (dotom .put m r c e))
 
