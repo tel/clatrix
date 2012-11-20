@@ -78,7 +78,10 @@
 ;;; setting; setting should be dissuaded as well for a Clojure
 ;;; wrapper, but it's too useful to hide.
 (defn get [^Matrix m r c]
-  (dotom .get m (int-arraytise r) (int-arraytise c)))
+  (let [out (dotom .get m (int-arraytise r) (int-arraytise c))]
+    (if (number? out)
+      out
+      (Matrix. out))))
 (defn set [^Matrix m ^long r ^long c ^double e]
   (dotom .put m r c e))
 
