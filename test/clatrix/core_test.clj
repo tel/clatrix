@@ -71,6 +71,9 @@
     (c/set A 0 0 z)
     (expect z (c/get A 0 0)))
 
+  (expect 3.0 (c/get F 0 3))
+  (expect (c/matrix [[17 18]]) (c/get F 1 [2 3]))
+
   (expect `(c/matrix ~(map #(map double %) [[1 2] [3 4]]))
           (read* (str (c/matrix [[1 2] [3 4]]))))
 
