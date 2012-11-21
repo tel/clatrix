@@ -73,6 +73,12 @@
 
   (expect 3.0 (c/get F 0 3))
   (expect (c/matrix [[17 18]]) (c/get F 1 [2 3]))
+  ; bug in jblas patch submitted
+  ;(expect (c/matrix [[2] [17] [32]]) (c/get F [0 1 2] 2))
+  (expect (c/matrix [[3 5 7]
+                     [108 110 112]
+                     [138 140 142]])
+          (c/get F [0 7 9] [3 5 7]))
 
   (expect `(c/matrix ~(map #(map double %) [[1 2] [3 4]]))
           (read* (str (c/matrix [[1 2] [3 4]]))))
