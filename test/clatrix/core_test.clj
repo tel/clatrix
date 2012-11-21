@@ -17,6 +17,7 @@
       S (c/rnorm ns ns)
       p (c/rnorm m)
       q (c/rnorm ns)
+      F (c/matrix (partition m (range (* n m))))
       ridx (range n)
       cidx (range m)]
 
@@ -25,6 +26,7 @@
   (expect Matrix S)
   (expect Matrix p)
   (expect Matrix q)
+  (expect Matrix F)
 
   (given A
          (expect c/size [n m]
@@ -56,6 +58,14 @@
                  c/column? true
                  c/vector? true
                  c/row?    false))
+
+  (given F
+         (expect c/size [n m]
+                 c/matrix? true
+                 c/square? false
+                 c/column? false
+                 c/vector? false
+                 c/row? false))
 
   (let [z (rand)]
     (c/set A 0 0 z)
