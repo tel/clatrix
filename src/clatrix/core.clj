@@ -4,6 +4,7 @@
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
             Decompose Decompose$LUDecomposition Eigen Solve Geometry
             Singular MatrixFunctions]
+           [org.jblas.util Random]
            [java.io Writer]))
 
 ;;; Clatrix is a fast matrix library for Clojure written atop JBlas'
@@ -209,6 +210,11 @@
 ;;;
 ;;; It's also useful to generate random matrices. These are
 ;;; elementwise independent Unif(0,1) and normal.
+;;;
+;;; You can use `seed`, `unseed`, and `with-seed` to make repeatable
+;;; sequences of random numbers (for testing, for example,) similar
+;;; to `seed(n)` in R.
+;;;
 
 (promote-cfun* defn  rand   DoubleMatrix/rand)
 (promote-cfun* defn- randn* DoubleMatrix/randn)
@@ -227,6 +233,32 @@
         (.addi mu))))
   ([^long n ^long m] (randn* n m))
   ([^long n] (randn* n)))
+
+(defn seed
+  "You can set the seed used to generate the values in a random matrix if you
+need repeatablity for some reason."
+  [n]
+  (Random/seed n))
+
+(defonce ^:private uniquifier (atom 8682522807148012))
+
+(defn unseed
+  "When you are done changing the seed, you can go back to a pseudo-random seed.
+Uses the same algorithm as java's default Random constructor."
+  []
+  (Random/seed (swap! uniquifier
+                      #(bit-xor
+                        (unchecked-multiply (long %) 181783497276652981)
+                        (System/nanoTime)))))
+
+(defmacro with-seed
+  "If you want to control the scope of a seed you've set, you can use this convenient macro."
+  [n & body]
+  `(do
+     (seed ~n)
+     (try ~@body
+          (finally
+            (unseed)))))
 
 ;;; ## Element algebra
 ;;;
