@@ -73,10 +73,10 @@
 (defn- int-arraytise
   "Convert a seq to int array or pass through for a number."
   [x] (if (coll? x) (int-array x) x))
-
+  
 ;;; The most basic matrix operation is elementwise getting and
 ;;; setting; setting should be dissuaded as well for a Clojure
-;;; wrapper, but it's too useful to hide.
+;;; wrapper, but it's too useful to hide.  
 (defn get [^Matrix m r c]
   (let [out (dotom .get m (int-arraytise r) (int-arraytise c))]
     (if (number? out)

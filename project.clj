@@ -9,6 +9,6 @@
                      [expectations "1.4.16"]]
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [slingshot "0.8.0"]
-                 [jblas/jblas "1.2.1"]
+                 [com.quantisan/jblas "1.2.2-SNAPSHOT"]
                  [jblas/native "1.2.0"]]
   :profiles {:dev {:dependencies [[expectations "1.4.16"]]}})
