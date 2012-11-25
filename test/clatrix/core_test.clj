@@ -264,3 +264,6 @@
   (expect (Math/sinh 7.0)   (c/get (c/sinh! (c/column (range 9))) 7 0))
   (expect (Math/sqrt 7.0)   (c/get (c/sqrt! (c/column (range 9))) 7 0))
   (expect (Math/tanh 7.0)   (c/get (c/tanh! (c/column (range 9))) 7 0)))
+
+(expect 2.0498889512140543
+        (c/trace (c/with-seed 42 (c/rand 5 5))))
