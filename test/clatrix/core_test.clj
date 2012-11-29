@@ -80,6 +80,7 @@
           (c/get F [0 7 9] [3 5 7]))
 
   (expect (map double (range m)) (first F))
+  (expect (partition m (map double (range m (* n m)))) (rest F))
 
   (expect `(c/matrix ~(map #(map double %) [[1 2] [3 4]]))
           (read* (str (c/matrix [[1 2] [3 4]]))))
