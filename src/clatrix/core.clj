@@ -20,11 +20,18 @@
 ;;; available through the `:me` keyword), but their use is clearly
 ;;; dissuaded.
 
+(declare rows)
+(declare as-vec)
+(declare matrix)
+
 (defrecord Matrix [^DoubleMatrix me]
   Object
   (toString [^Matrix mat]
     (str (list `matrix
-               (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat)))))))))
+               (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat))))))))
+  clojure.lang.ISeq
+  (first [this]
+    (as-vec (first (rows this)))))
 
 (defn- me [^Matrix mat]
   (.me mat))
