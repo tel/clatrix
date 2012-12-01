@@ -18,6 +18,7 @@
       p (c/rnorm m)
       q (c/rnorm ns)
       F (c/matrix (partition m (range (* n m))))
+      M (c/matrix [[1 2 3] [4 5 6]])
       ridx (range n)
       cidx (range m)]
 
@@ -79,8 +80,12 @@
                      [138 140 142]])
           (c/get F [0 7 9] [3 5 7]))
 
+  ;; clojure sequence methods
   (expect (map double (range m)) (first F))
   (expect (partition m (map double (range m (* n m)))) (rest F))
+  (expect (conj M [10 11 12]) (c/matrix [[1 2 3] [4 5 6] [10 11 12]]))
+  (expect (conj M M) (c/matrix [[1 2 3] [4 5 6]
+                                [1 2 3] [4 5 6]]))
 
   (expect `(c/matrix ~(map #(map double %) [[1 2] [3 4]]))
           (read* (str (c/matrix [[1 2] [3 4]]))))
