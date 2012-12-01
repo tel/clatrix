@@ -31,7 +31,9 @@
                (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat))))))))
   clojure.lang.ISeq
   (first [this]
-    (as-vec (first (rows this)))))
+    (as-vec (first (rows this))))
+  (more [this]
+    (clojure.core/map as-vec (rest (rows this)))))
 
 (defn- me [^Matrix mat]
   (.me mat))
