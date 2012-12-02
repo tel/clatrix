@@ -24,6 +24,7 @@
 (declare size)
 (declare as-vec)
 (declare matrix)
+(declare vstack)
 
 (defrecord Matrix [^DoubleMatrix me]
   Object
@@ -140,8 +141,8 @@
   identical or an error is throw."
   [seq-of-seqs]
   (let [lengths (clojure.core/map count seq-of-seqs)
-        l0      (first lengths)]
-    (if (every? (partial = l0) lengths)
+        flen      (first lengths)]
+    (if (every? (partial = flen) lengths)
       (Matrix.
        (DoubleMatrix.
         ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE %) seq-of-seqs))))
