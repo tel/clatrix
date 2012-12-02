@@ -26,11 +26,16 @@
 (declare matrix)
 (declare vstack)
 
-(deftype Matrix [^DoubleMatrix me]
+(deftype Matrix [^DoubleMatrix me ^clojure.lang.IPersistentMap metadata]
   Object
   (toString [^Matrix mat]
     (str (list `matrix
                (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat))))))))
+  clojure.lang.IObj
+  (withMeta [this metadata]
+    (Matrix. me metadata))
+  (meta [this]
+    metadata)
   clojure.lang.ISeq
   (first [this]
     (as-vec (permute this :rowspec [0])))
@@ -38,6 +43,8 @@
     (clojure.core/map as-vec (permute this :rowspec (range 1 (first (size this))))))
   (cons [this x]
     (vstack (matrix x) this)))
+
+;; TODO make all (Matrix.) use (matrix)
 
 (defn- me [^Matrix mat]
   (.me mat))
@@ -53,8 +60,8 @@
   (let [n (gensym)
         m (gensym)]
     `(~defname ~name
-       ([^long ~n] (Matrix. (~fname ~n)))
-       ([^long ~n ~m] (Matrix. (~fname ~n ~m))))))
+       ([^long ~n] (Matrix. (~fname ~n) {}))
+       ([^long ~n ~m] (Matrix. (~fname ~n ~m) {})))))
 
 (defmacro promote-mfun* [defname name fname]
   (let [m (gensym)]
@@ -94,7 +101,7 @@
   (let [out (dotom .get m (int-arraytise r) (int-arraytise c))]
     (if (number? out)
       out
-      (Matrix. out))))
+      (Matrix. out {}))))
 (defn set [^Matrix m ^long r ^long c ^double e]
   (dotom .put m r c e))
 
@@ -135,20 +142,23 @@
 (defn column
   "`column` coerces a seq of numbers to a column `Matrix`."
   [^doubles seq]
-  (Matrix. (DoubleMatrix. ^doubles (into-array Double/TYPE seq))))
+  (Matrix. (DoubleMatrix. ^doubles (into-array Double/TYPE seq)) {}))
 
 (defn matrix
   "`matrix` creates a `Matrix` from a seq of seqs, specifying the
   matrix in row-major order. The length of each seq must be
   identical or an error is throw."
-  [seq-of-seqs]
-  (let [lengths (clojure.core/map count seq-of-seqs)
-        flen    (first lengths)]
-    (if (every? (partial = flen) lengths)
-      (Matrix.
-       (DoubleMatrix.
-        ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE %) seq-of-seqs))))
-      (throw+ {:error "Cannot create a ragged matrix."}))))
+  ([seq-of-seqs]
+   (matrix {} seq-of-seqs))
+  ([meta seq-of-seqs]
+   (let [lengths (clojure.core/map count seq-of-seqs)
+         flen    (first lengths)]
+     (if (every? (partial = flen) lengths)
+       (Matrix.
+         (DoubleMatrix.
+           ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE %) seq-of-seqs)))
+         meta)
+       (throw+ {:error "Cannot create a ragged matrix."})))))
 
 (defn diag
   "`diag` creates a diagonal matrix from a seq of numbers or extracts
@@ -161,7 +171,7 @@
       (let [n (apply min (size mat))]
         (clojure.core/map #(get mat % %) (range n))))
     (let [di ^doubles (seq seq-or-matrix)]
-      (Matrix. (DoubleMatrix/diag (DoubleMatrix. ^doubles (into-array Double/TYPE di)))))))
+      (Matrix. (DoubleMatrix/diag (DoubleMatrix. ^doubles (into-array Double/TYPE di))) {}))))
 
 (promote-cfun* defn  ones DoubleMatrix/ones)
 (promote-cfun* defn zeros DoubleMatrix/zeros)
@@ -169,17 +179,19 @@
   "`constant` creates a column or matrix with every element equal to
    the same constant value."
   ([^long n ^double c]
-     (Matrix.
-      (doto (DoubleMatrix/ones n)
-        (.muli c))))
+   (Matrix.
+     (doto (DoubleMatrix/ones n)
+       (.muli c))
+     {}))
   ([^long n ^long m ^double c]
-     (Matrix.
-      (doto (DoubleMatrix/ones n m)
-        (.muli c)))))
+   (Matrix.
+     (doto (DoubleMatrix/ones n m)
+       (.muli c))
+     {})))
 
 (defn id
   "`(id n)` is the `n`x`n` identity matrix."
-  [^long n] (Matrix. (DoubleMatrix/eye n)))
+  [^long n] (Matrix. (DoubleMatrix/eye n) {}))
 
 ;;; ## Reshaping
 
@@ -223,7 +235,7 @@
     (doseq [i (range n)
             j (range n)]
       (aset ary i j (fun i j)))
-    (Matrix. (DoubleMatrix. ^"[[D" ary))))
+    (Matrix. (DoubleMatrix. ^"[[D" ary) {})))
 
 ;;; ## Random matrices
 ;;;
@@ -235,16 +247,18 @@
 
 (defn rnorm
   "`(rnorm mu sigma n m)` is an `n`x`m` `Matrix` with normally
-   distributed random elements with mean `mu` and standard deviation
-   `sigma`."
+  distributed random elements with mean `mu` and standard deviation
+  `sigma`."
   ([^double mu ^double sigma ^long n ^long m]
-     (Matrix.
-      (doto (dotom .muli (randn* n m) sigma)
-        (.addi mu))))
+   (Matrix.
+     (doto (dotom .muli (randn* n m) sigma)
+       (.addi mu))
+     {}))
   ([^double mu ^double sigma ^long n]
-     (Matrix.
-      (doto (dotom .muli (randn* n) sigma)
-        (.addi mu))))
+   (Matrix.
+     (doto (dotom .muli (randn* n) sigma)
+       (.addi mu))
+     {}))
   ([^long n ^long m] (randn* n m))
   ([^long n] (randn* n)))
 
@@ -256,7 +270,7 @@
 
 (defn t
   "`(t A)` is the transpose of `A`."
-  [^Matrix mat] (Matrix. (dotom .transpose mat)))
+  [^Matrix mat] (Matrix. (dotom .transpose mat) {}))
 
 (defn hstack
   "`hstack` concatenates a number of matrices by aligning them
@@ -270,10 +284,11 @@
         rows (first row-counts)]
     (if (every? (partial == rows) row-counts)
       (Matrix. (reduce #(DoubleMatrix/concatHorizontally
-                         ^DoubleMatrix %1
-                         ^DoubleMatrix (me %2))
+                          ^DoubleMatrix %1
+                          ^DoubleMatrix (me %2))
                        (me (first vec-seq))
-                       (rest vec-seq))))))
+                       (rest vec-seq))
+               {}))))
 
 (defn vstack
   "`vstack` is vertical concatenation in the style of `hstack`. See
@@ -287,7 +302,8 @@
                          ^DoubleMatrix %1
                          ^DoubleMatrix (me %2))
                        (me (first vec-seq))
-                       (rest vec-seq))))))
+                       (rest vec-seq))
+               {}))))
 
 (defn rows
   "`rows` explodes a `Matrix` into its constituent rows. By default,
@@ -297,7 +313,7 @@
      (let [[n m] (size mat)]
        (rows mat (range n))))
   ([^Matrix m ^longs idxs]
-     (clojure.core/map #(Matrix. (dotom .getRow m %)) idxs)))
+     (clojure.core/map #(Matrix. (dotom .getRow m %) {}) idxs)))
 
 (defn cols
   "`cols` explodes a `Matrix` into its constituent columns in the
@@ -306,7 +322,7 @@
      (let [[n m] (size mat)]
        (cols mat (range m))))
   ([^Matrix m ^longs idxs]
-     (clojure.core/map #(Matrix. (dotom .getColumn m %)) idxs)))
+     (clojure.core/map #(Matrix. (dotom .getColumn m %) {}) idxs)))
 
 ;;; From this we also get generalized matrix permutations almost for free.
 
@@ -477,8 +493,8 @@
 (defn- slicer
   ([^Matrix matrix rowspec colspec]
      (cond (and (iswild rowspec) (iswild colspec)) matrix
-           (iswild rowspec) `(Matrix. (dotom .getColumn ~matrix ~colspec))
-           (iswild colspec) `(Matrix. (dotom .getRow    ~matrix ~rowspec))
+           (iswild rowspec) `(Matrix. (dotom .getColumn ~matrix ~colspec) {})
+           (iswild colspec) `(Matrix. (dotom .getRow    ~matrix ~rowspec) {})
            :else            `(get                 ~matrix ~rowspec ~colspec)))
   ([^DoubleMatrix matrix rowspec colspec values]
      (let [m (gensym)
@@ -608,22 +624,22 @@
   column vectors."
   [^Matrix mat & [flags]]
   (if (column? mat)
-    (Matrix. (dotom Geometry/normalize mat))
-    (Matrix. (dotom Geometry/normalizeColumns mat))))
+    (Matrix. (dotom Geometry/normalize mat) {})
+    (Matrix. (dotom Geometry/normalizeColumns mat) {})))
 
 (defn +
   "`+` sums vectors and matrices (and scalars as if they were constant
   matrices). All the matrices must have the same size."
   ([a b] (cond (and (matrix? a) (matrix? b))
                (if (= (size a) (size b))
-                 (Matrix. (dotom .add a ^DoubleMatrix (me b)))
+                 (Matrix. (dotom .add a ^DoubleMatrix (me b)) {})
                  (throw+ {:exception "Matrices of different sizes cannot be summed."
                           :asize (size a)
                           :bsize (size b)}))
                (matrix? a) (Matrix.
-                            (dotom .add a (double b)))
+                             (dotom .add a (double b)) {})
                (matrix? b) (Matrix.
-                            (dotom .add b (double a)))
+                             (dotom .add b (double a)) {})
                :else       (clojure.core/+ a b)))
   ([a b & as] (reduce + a (cons b as))))
 
@@ -632,14 +648,14 @@
   scaling factors). All matrices must have compatible sizes."
   ([a b] (cond (and (matrix? a) (matrix? b))
                (if (= (second (size a)) (first (size b)))
-                 (Matrix. (dotom .mmul a ^DoubleMatrix (me b)))
+                 (Matrix. (dotom .mmul a ^DoubleMatrix (me b)) {})
                  (throw+ {:exception "Matrix products must have compatible sizes."
                           :asize (size a)
                           :bsize (size b)}))
                (matrix? a) (Matrix.
-                            (dotom .mmul a (double b)))
+                            (dotom .mmul a (double b)) {})
                (matrix? b) (Matrix.
-                            (dotom .mmul b (double a)))
+                            (dotom .mmul b (double a)) {})
                :else       (clojure.core/* a b)))
   ([a b & as] (reduce * a (cons b as))))
 
@@ -649,14 +665,14 @@
   ([a] (* -1 a))
   ([a b] (cond (and (matrix? a) (matrix? b))
                (if (= (size a) (size b))
-                 (Matrix. (dotom .sub a ^DoubleMatrix (me b)))
+                 (Matrix. (dotom .sub a ^DoubleMatrix (me b)) {})
                  (throw+ {:exception "Matrices of different sizes cannot be differenced."
                           :asize (size a)
                           :bsize (size b)}))
                (matrix? a) (Matrix.
-                            (dotom .sub a (double b)))
+                            (dotom .sub a (double b)) {})
                (matrix? b) (Matrix.
-                            (dotom .rsub b (double a)))
+                            (dotom .rsub b (double a)) {})
                :else       (clojure.core/- a b)))
   ([a b & as] (reduce - a (cons b as))))
 
@@ -677,7 +693,7 @@
   [n]
   (let [v (Geometry/normalize (DoubleMatrix/randn n))]
     (Matrix.
-     (.sub (DoubleMatrix/eye n) (.mmul (.mmul v (.transpose v)) (double 2))))))
+      (.sub (DoubleMatrix/eye n) (.mmul (.mmul v (.transpose v)) (double 2))) {})))
 
 (defn rspectral
   "`rspectral` creates a random matrix with a particular spectrum, or,
@@ -700,7 +716,7 @@
         L (DoubleMatrix/diag
            (DoubleMatrix.
             ^doubles (into-array Double/TYPE spectrum)))
-        A (Matrix. (-> V (.mmul L) (.mmul (.transpose V))))]
+        A (Matrix. (-> V (.mmul L) (.mmul (.transpose V))) {})]
     (if (every? pos? spectrum)
       (positive A)
       A)))
@@ -711,13 +727,14 @@
   optimized LAPACK routines."
   [^Matrix A ^Matrix B]
   (Matrix.
-   (cond
-    (positive? A)  (Solve/solvePositive ^DoubleMatrix (me A)
-                                        ^DoubleMatrix (me B))
-    (symmetric? A) (Solve/solveSymmetric ^DoubleMatrix (me A)
-                                         ^DoubleMatrix (me B))
-    :else          (Solve/solve ^DoubleMatrix (me A)
-                                ^DoubleMatrix (me B)))))
+    (cond
+      (positive? A)  (Solve/solvePositive ^DoubleMatrix (me A)
+                                          ^DoubleMatrix (me B))
+      (symmetric? A) (Solve/solveSymmetric ^DoubleMatrix (me A)
+                                           ^DoubleMatrix (me B))
+      :else          (Solve/solve ^DoubleMatrix (me A)
+                                  ^DoubleMatrix (me B)))
+    {}))
 
 (defn i
   "`i` computes the inverse of a matrix. This is done via Gaussian
@@ -743,15 +760,15 @@
   spectrum."
   ([^DoubleMatrix A]
      (cond
-      (symmetric? A) (let [[vecs vals] (clojure.core/map #(Matrix. %)
+      (symmetric? A) (let [[vecs vals] (clojure.core/map #(Matrix. % {})
                                             (seq (dotom Eigen/symmetricEigenvectors A)))]
                        {:vectors vecs :values (diag vals)})
       :else          (let [[^ComplexDoubleMatrix vecs ^ComplexDoubleMatrix vals]
                            (seq (dotom Eigen/eigenvectors A))
-                           rvecs (Matrix. (.real vecs))
-                           ivecs (Matrix. (.imag vecs))
-                           rvals (diag (Matrix. (.real vals)))
-                           ivals (diag (Matrix. (.imag vals)))
+                           rvecs (Matrix. (.real vecs) {})
+                           ivecs (Matrix. (.imag vecs) {})
+                           rvals (diag (Matrix. (.real vals) {}))
+                           ivals (diag (Matrix. (.imag vals) {}))
                            out {:vectors rvecs
                                 :values  rvals}]
                        (if (some (partial not= 0.0) ivals)
@@ -764,7 +781,7 @@
            B (maybe-symmetric B)]
        (if (and (symmetric? A) (symmetric? B))
          (let [[vecs vals]
-               (clojure.core/map #(Matrix. %)
+               (clojure.core/map #(Matrix. % {})
                     (seq (Eigen/symmetricGeneralizedEigenvectors ^DoubleMatrix (me A)
                                                                  ^DoubleMatrix (me B))))]
            {:vectors vecs :values (as-vec vals)})
@@ -778,8 +795,8 @@
   and `(t V)` as `[k m]`."
   [^Matrix A]
   (let [[U L V] (dotom Singular/sparseSVD A)
-        left (Matrix. U)
-        right (Matrix. V)
+        left (Matrix. U {})
+        right (Matrix. V {})
         values (seq (.toArray L))]
     {:left left
      :right right
@@ -826,7 +843,7 @@
           (.mmul L)
           (.mmul (.transpose V))
           .real
-          Matrix.))))
+          (Matrix. {})))))
 
 (defn cholesky
   "`(cholesky A)` is the Cholesky square root of a matrix, `U` such
@@ -835,7 +852,7 @@
   [^Matrix mat]
   (let [mat (maybe-positive mat)]
     (if (positive? mat)
-      (Matrix. (dotom Decompose/cholesky mat))
+      (Matrix. (dotom Decompose/cholesky mat) {})
       (throw+ {:exception "Cholesky decompositions require positivity."}))))
 
 (defn lu
@@ -846,9 +863,9 @@
     (throw+ {:exception "Cannot compute LU decomposition of a non-square matrix."
              :size (size mat)})
     (let [lu (dotom Decompose/lu mat)]
-      {:p (Matrix. ^DoubleMatrix (.p lu))
-       :l (Matrix. ^DoubleMatrix (.l lu))
-       :u (Matrix. ^DoubleMatrix (.u lu))})))
+      {:p (Matrix. ^DoubleMatrix (.p lu) {})
+       :l (Matrix. ^DoubleMatrix (.l lu) {})
+       :u (Matrix. ^DoubleMatrix (.u lu) {})})))
 
 ;;; # Printing the matrices
 ;;;
@@ -943,7 +960,7 @@
 ;;; Helper macro
 (defmacro promote-mffun* [defname name fname]
   (let [m (gensym)]
-    `(~defname ~name ^Matrix [^Matrix ~m] (Matrix. (dotom ~fname ~m)))))
+    `(~defname ~name ^Matrix [^Matrix ~m] (Matrix. (dotom ~fname ~m) {}))))
 
 ;;; These are the functional style matrix functions.  They accept a
 ;;; matrix and return a new matrix with the function applied element-wise.
