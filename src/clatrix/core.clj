@@ -26,7 +26,7 @@
 (declare matrix)
 (declare vstack)
 
-(defrecord Matrix [^DoubleMatrix me]
+(deftype Matrix [^DoubleMatrix me]
   Object
   (toString [^Matrix mat]
     (str (list `matrix
@@ -35,7 +35,9 @@
   (first [this]
     (as-vec (permute this :rowspec [0])))
   (more [this]
-    (clojure.core/map as-vec (permute this :rowspec (range 1 (first (size this)))))))
+    (clojure.core/map as-vec (permute this :rowspec (range 1 (first (size this))))))
+  (cons [this x]
+    (vstack (matrix x) this)))
 
 (defn- me [^Matrix mat]
   (.me mat))
@@ -141,7 +143,7 @@
   identical or an error is throw."
   [seq-of-seqs]
   (let [lengths (clojure.core/map count seq-of-seqs)
-        flen      (first lengths)]
+        flen    (first lengths)]
     (if (every? (partial = flen) lengths)
       (Matrix.
        (DoubleMatrix.
