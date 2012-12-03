@@ -20,7 +20,7 @@
 ;;; available through the `:me` keyword), but their use is clearly
 ;;; dissuaded.
 
-(declare permute size as-vec matrix matrix? vstack)
+(declare permute size as-vec matrix matrix? row? vstack)
 
 (deftype Matrix [^DoubleMatrix me ^clojure.lang.IPersistentMap metadata]
   Object
@@ -37,7 +37,8 @@
   (first [this]
     (as-vec (permute this :rowspec [0])))
   (more [this]
-    (clojure.core/map as-vec (permute this :rowspec (range 1 (first (size this))))))
+    (when (not (row? this))
+      (clojure.core/map as-vec (permute this :rowspec (range 1 (first (size this)))))))
   (cons [this x]
     (vstack (matrix x) this)))
 
