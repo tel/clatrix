@@ -20,11 +20,7 @@
 ;;; available through the `:me` keyword), but their use is clearly
 ;;; dissuaded.
 
-(declare permute)
-(declare size)
-(declare as-vec)
-(declare matrix)
-(declare vstack)
+(declare permute size as-vec matrix matrix? vstack)
 
 (deftype Matrix [^DoubleMatrix me ^clojure.lang.IPersistentMap metadata]
   Object
@@ -37,7 +33,7 @@
   (meta [this]
     metadata)
   clojure.lang.ISeq
-  (equiv [this x] (.equals (.me this) x))
+  (equiv [this x] (and (matrix? x) (.equals (.me this) (.me x))))
   (first [this]
     (as-vec (permute this :rowspec [0])))
   (more [this]
@@ -541,7 +537,7 @@
   [^Matrix m] (with-meta m {:symmetric true}))
 
 (defn positive
-  "`positive` asserts that a matrix is positive definite."
+  "`positive` asserts that a matrix is positive definite. By definition, it is also `symmetric`."
   [^Matrix m] (with-meta m {:symmetric true :positive true}))
 
 (defn arbitrary
