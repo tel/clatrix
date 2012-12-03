@@ -40,10 +40,15 @@
     (when (not (row? this))
       (permute this :rowspec (range 1 (first (size this))))))
   (cons [this x]
-    (vstack (matrix x) this))
+    (vstack this (matrix x)))
   (seq [this]
     (when this
-      this)))
+      this))
+  clojure.lang.Counted
+  (count [this]
+    (if (row? this)
+      (second (size this))
+      (first (size this)))))
 
 ;; TODO make all (Matrix.) use (matrix)
 

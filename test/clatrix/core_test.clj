@@ -18,6 +18,7 @@
       p (c/rnorm m)
       q (c/rnorm ns)
       F (c/matrix (partition m (range (* n m))))
+      R (c/matrix (vector (range m)))
       M (c/matrix [[1 2 3] [4 5 6]])
       ridx (range n)
       cidx (range m)]
@@ -28,6 +29,7 @@
   (expect Matrix p)
   (expect Matrix q)
   (expect Matrix F)
+  (expect Matrix R)
 
   (given A
          (expect c/size [n m]
@@ -66,7 +68,16 @@
                  c/square? false
                  c/column? false
                  c/vector? false
-                 c/row? false))
+                 c/row? false
+                 count n))
+  (given R
+         (expect c/size [1 15]
+                 c/matrix? true
+                 c/square? false
+                 c/column? false
+                 c/vector? true
+                 c/row? true
+                 count m))
 
   (let [z (rand)]
     (c/set A 0 0 z)
@@ -81,9 +92,9 @@
           (c/get F [0 7 9] [3 5 7]))
 
   ;; clojure sequence methods
-  (expect (c/matrix (range m)) (first F))
+  (expect (c/matrix (vector (range m))) (first F))
   (expect (c/matrix (partition m (range m (* n m)))) (rest F))
-  (expect (conj M [10 11 12]) (c/matrix [[1 2 3] [4 5 6] [10 11 12]]))
+  (expect (conj M [[10 11 12]]) (c/matrix [[1 2 3] [4 5 6] [10 11 12]]))
   (expect (conj M M) (c/matrix [[1 2 3] [4 5 6]
                                 [1 2 3] [4 5 6]]))
 
