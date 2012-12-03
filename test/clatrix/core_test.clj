@@ -81,8 +81,8 @@
           (c/get F [0 7 9] [3 5 7]))
 
   ;; clojure sequence methods
-  (expect (map double (range m)) (first F))
-  (expect (partition m (map double (range m (* n m)))) (rest F))
+  (expect (c/matrix (range m)) (first F))
+  (expect (c/matrix (partition m (range m (* n m)))) (rest F))
   (expect (conj M [10 11 12]) (c/matrix [[1 2 3] [4 5 6] [10 11 12]]))
   (expect (conj M M) (c/matrix [[1 2 3] [4 5 6]
                                 [1 2 3] [4 5 6]]))

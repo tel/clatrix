@@ -20,7 +20,7 @@
 ;;; available through the `:me` keyword), but their use is clearly
 ;;; dissuaded.
 
-(declare permute size as-vec matrix matrix? row? vstack)
+(declare permute size matrix matrix? row? vstack)
 
 (deftype Matrix [^DoubleMatrix me ^clojure.lang.IPersistentMap metadata]
   Object
@@ -35,12 +35,15 @@
   clojure.lang.ISeq
   (equiv [this x] (and (matrix? x) (.equals (.me this) (.me x))))
   (first [this]
-    (as-vec (permute this :rowspec [0])))
+    (permute this :rowspec [0]))
   (more [this]
     (when (not (row? this))
-      (clojure.core/map as-vec (permute this :rowspec (range 1 (first (size this)))))))
+      (permute this :rowspec (range 1 (first (size this))))))
   (cons [this x]
-    (vstack (matrix x) this)))
+    (vstack (matrix x) this))
+  (seq [this]
+    (when this
+      this)))
 
 ;; TODO make all (Matrix.) use (matrix)
 
