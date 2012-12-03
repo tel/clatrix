@@ -542,7 +542,7 @@
 
 (defn positive
   "`positive` asserts that a matrix is positive definite."
-  [^Matrix m] (with-meta (symmetric m) {:positive true}))
+  [^Matrix m] (with-meta m {:symmetric true :positive true}))
 
 (defn arbitrary
   "`arbitrary` asserts that a matrix is just arbitrary."
