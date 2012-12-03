@@ -37,6 +37,7 @@
   (meta [this]
     metadata)
   clojure.lang.ISeq
+  (equiv [this x] (.equals (.me this) x))
   (first [this]
     (as-vec (permute this :rowspec [0])))
   (more [this]
