@@ -163,16 +163,18 @@
   ([seq-of-seqs]
    (matrix {} seq-of-seqs))
   ([meta seq-of-seqs]
-   (let [lengths (clojure.core/map count seq-of-seqs)
-         flen    (first lengths)]
-     (cond
-       (or (= (count lengths) 0) (some zero? lengths)) (Matrix. (DoubleMatrix. 0 0) meta)
-       (every? (partial = flen) lengths)
-       (Matrix.
-         (DoubleMatrix.
-           ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE %) seq-of-seqs)))
-         meta)
-       :else (throw+ {:error "Cannot create a ragged matrix."})))))
+   (if (number? (first seq-of-seqs))
+     (Matrix. (DoubleMatrix. 1 (count seq-of-seqs) (into-array Double/TYPE seq-of-seqs)) meta)
+     (let [lengths (clojure.core/map count seq-of-seqs)
+           flen    (first lengths)]
+       (cond
+         (or (= (count lengths) 0) (some zero? lengths)) (Matrix. (DoubleMatrix. 0 0) meta)
+         (every? (partial = flen) lengths)
+         (Matrix.
+           (DoubleMatrix.
+             ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE %) seq-of-seqs)))
+           meta)
+         :else (throw+ {:error "Cannot create a ragged matrix."}))))))
 
 (defn diag
   "`diag` creates a diagonal matrix from a seq of numbers or extracts

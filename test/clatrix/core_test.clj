@@ -18,7 +18,7 @@
       p (c/rnorm m)
       q (c/rnorm ns)
       F (c/matrix (partition m (range (* n m))))
-      R (c/matrix (vector (range m)))
+      R (c/matrix (range m))
       M (c/matrix [[1 2 3] [4 5 6]])
       ridx (range n)
       cidx (range m)]
