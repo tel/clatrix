@@ -42,7 +42,9 @@
     (when (not (row? this)) ;; TODO empty matrix what to do?
       (permute this :rowspec (range 1 (first (size this))))))
   (cons [this x]
-    (vstack this (matrix x)))
+    (if (matrix? x)
+      (vstack this x)
+      (vstack this (matrix x))))
   (seq [this]
     (when this
       this))
