@@ -37,13 +37,15 @@
   (first [this]
     (permute this :rowspec [0]))
   (more [this]
-    (when (not (row? this))
+    (when (not (row? this)) ;; TODO empty matrix what to do?
       (permute this :rowspec (range 1 (first (size this))))))
   (cons [this x]
     (vstack this (matrix x)))
   (seq [this]
     (when this
       this))
+  (next [this]
+    (rest this))
   clojure.lang.Counted
   (count [this]
     (if (row? this)
@@ -159,12 +161,14 @@
   ([meta seq-of-seqs]
    (let [lengths (clojure.core/map count seq-of-seqs)
          flen    (first lengths)]
-     (if (every? (partial = flen) lengths)
+     (cond
+       (or (= (count lengths) 0) (some zero? lengths)) (Matrix. (DoubleMatrix. 0 0) meta)
+       (every? (partial = flen) lengths)
        (Matrix.
          (DoubleMatrix.
            ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE %) seq-of-seqs)))
          meta)
-       (throw+ {:error "Cannot create a ragged matrix."})))))
+       :else (throw+ {:error "Cannot create a ragged matrix."})))))
 
 (defn diag
   "`diag` creates a diagonal matrix from a seq of numbers or extracts
