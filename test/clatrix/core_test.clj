@@ -93,6 +93,7 @@
 
   ;; clojure sequence methods
   (expect (c/matrix (vector (range m))) (first F))
+  (expect 0.0 (ffirst F))
   (expect (c/matrix (partition m (range m (* n m)))) (rest F))
   (expect (conj M [[10 11 12]]) (c/matrix [[1 2 3] [4 5 6] [10 11 12]]))
   (expect (conj M M) (c/matrix [[1 2 3] [4 5 6]

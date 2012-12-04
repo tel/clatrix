@@ -20,7 +20,7 @@
 ;;; available through the `:me` keyword), but their use is clearly
 ;;; dissuaded.
 
-(declare permute size matrix matrix? row? vstack)
+(declare permute get size matrix matrix? row? vstack)
 
 (deftype Matrix [^DoubleMatrix me ^clojure.lang.IPersistentMap metadata]
   Object
@@ -35,7 +35,9 @@
   clojure.lang.ISeq
   (equiv [this x] (and (matrix? x) (.equals (.me this) (.me x))))
   (first [this]
-    (permute this :rowspec [0]))
+    (if (row? this)
+      (get this 0 0)
+      (permute this :rowspec [0])))
   (more [this]
     (when (not (row? this)) ;; TODO empty matrix what to do?
       (permute this :rowspec (range 1 (first (size this))))))
@@ -104,7 +106,7 @@
   
 ;;; The most basic matrix operation is elementwise getting and
 ;;; setting; setting should be dissuaded as well for a Clojure
-;;; wrapper, but it's too useful to hide.  
+;;; wrapper, but it's too useful to hide
 (defn get [^Matrix m r c]
   (let [out (dotom .get m (int-arraytise r) (int-arraytise c))]
     (if (number? out)
