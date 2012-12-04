@@ -99,6 +99,8 @@
   (expect (conj M M) (c/matrix [[1 2 3] [4 5 6]
                                 [1 2 3] [4 5 6]]))
 
+  (expect (reduce + (range m)) (reduce + R))
+
   (expect `(c/matrix ~(map #(map double %) [[1 2] [3 4]]))
           (read* (str (c/matrix [[1 2] [3 4]]))))
 
