@@ -39,10 +39,9 @@
       (get this 0 0)
       (permute this :rowspec [0])))
   (more [this]
-    (let [nxt (next this)]
-      (if nxt
-        nxt
-        (matrix []))))
+    (if-let [nxt (next this)]
+      nxt
+      (matrix [])))
   (cons [this x]
     (if (matrix? x)
       (vstack this x)
@@ -52,9 +51,8 @@
       this))
   (next [this]
     (let [[r c] (size this)]
-      (cond  ;; TODO get this working
+      (cond
         (and (= r 1) (> c 1)) (get this 0 (range 1 c))
-        (and (= r 1) (= c 1)) nil
         (> r 1) (permute this :rowspec (range 1 r))
         :else nil)))
   clojure.lang.Counted
