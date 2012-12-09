@@ -20,7 +20,7 @@
 ;;; available through the `:me` keyword), but their use is clearly
 ;;; dissuaded.
 
-(declare get permute size matrix matrix? row? vstack)
+(declare get permute size matrix matrix? row? nrows ncols vstack)
 
 (deftype Matrix [^DoubleMatrix me ^Boolean vector? ^clojure.lang.IPersistentMap metadata]
   Object
@@ -38,8 +38,8 @@
     (let [[r c] (size this)]
       (cond
         (or (zero? r) (zero? c)) nil
-        (or (= r 1) (= c 1)) (get this 0 0)
-        (> r 1) (get this 0 (range c)))))
+        (and vector? (or (= r 1) (= c 1))) (get this 0 0)
+        :else (get this 0 (range c)))))
   (more [this]
     (if-let [nxt (next this)]
       nxt
@@ -59,7 +59,9 @@
         :else nil)))
   clojure.lang.Counted
   (count [this]
-    (first (size this))))
+    (if vector?
+      (clojure.core/* (nrows this) (ncols this))
+      (nrows this))))
 
 (declare pp)
 (defn map*
