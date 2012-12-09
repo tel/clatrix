@@ -104,18 +104,16 @@
 ;; clojure sequence methods
 (expect (c/matrix (vector (range m))) (first F))
 (expect 0.0 (ffirst F))
-(expect (c/matrix [4 5 6]) (rest M))
-(expect (c/matrix [5 6]) (rest (rest M)))
-(expect (c/matrix [5 6]) (next (next M)))
-(expect (c/matrix []) (nth (iterate rest M) 4))
-(expect nil (nth (iterate next M) 4))
+(expect (c/matrix [[4 5 6]]) (rest M))
+(expect (c/matrix []) (rest (rest M)))
+(expect nil (next (next M)))
 (expect (c/column (range 1 n)) (rest C))
 (expect (c/matrix (partition m (range m (* n m)))) (rest F))
 
 (expect (conj M [[10 11 12]]) (c/matrix [[1 2 3] [4 5 6] [10 11 12]]))
 (expect (conj M M) (c/matrix [[1 2 3] [4 5 6]
                               [1 2 3] [4 5 6]]))
-(expect [(c/matrix [1 2 3]) (c/matrix [4 5 6])] (map identity M))
+(expect [(c/matrix [[1 2 3]]) (c/matrix [[4 5 6]])] (map identity M))
 
 (expect (double (reduce + (range m))) (reduce + R))
 

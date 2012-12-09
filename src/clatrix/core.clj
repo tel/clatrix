@@ -52,11 +52,9 @@
     (when this
       this))
   (next [this]
-    (let [[r c] (size this)]
-      (cond
-        ;(and (= r 1) (> c 1)) (get this 0 (range 1 c))
-        (> r 1) (permute this :rowspec (range 1 r))
-        :else nil)))
+    (let [r  (nrows this)]
+      (when (> r 1)
+        (matrix (:me (permute this :rowspec (range 1 r))) false {}))))
   clojure.lang.Counted
   (count [this]
     (if vector?
@@ -185,11 +183,13 @@
   "`matrix` creates a `Matrix` from a seq of seqs, specifying the
   matrix in row-major order. The length of each seq must be
   identical or an error is throw."
-  class)
+  (fn [m & args] (class m)))
 
 (defmethod matrix ::double-matrix
-  [^DoubleMatrix x]
-  (Matrix. x (.isVector x) {}))
+  ([^DoubleMatrix x]
+   (matrix x (.isVector x) {})) 
+  ([^DoubleMatrix x vector? meta]
+   (Matrix. x vector? meta)))
 
 (defmethod matrix ::collection
   [seq-of-seqs]
