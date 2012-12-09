@@ -115,6 +115,7 @@
   (expect (conj M [[10 11 12]]) (c/matrix [[1 2 3] [4 5 6] [10 11 12]]))
   (expect (conj M M) (c/matrix [[1 2 3] [4 5 6]
                                 [1 2 3] [4 5 6]]))
+  (expect [(c/matrix [1 2 3]) (c/matrix [4 5 6])] (map identity M))
 
   (expect (double (reduce + (range m))) (reduce + R))
 
