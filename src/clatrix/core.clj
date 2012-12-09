@@ -136,7 +136,7 @@
   (let [out (dotom .get m (int-arraytise r) (int-arraytise c))]
     (if (number? out)
       out
-      (matrix out (meta m)))))
+      (with-meta (matrix out) (meta m)))))
 (defn set [^Matrix m ^long r ^long c ^double e]
   (dotom .put m r c e))
 
@@ -174,11 +174,10 @@
 ;;; such as (1) direct coercions, (2) element-constant matrices and
 ;;; vectors, and (3) identity matrices.
 
-(declare t)
-(defn column
+(defn column  ;; TODO remove from api
   "`column` coerces a seq of numbers to a column `Matrix`."
   [^doubles seq]
-  (t (matrix seq)))
+  (matrix seq))
 
 (derive java.util.Collection ::collection)
 (derive DoubleMatrix ::double-matrix)
@@ -188,25 +187,23 @@
   identical or an error is throw."
   class)
 
+(defmethod matrix ::double-matrix
+  [^DoubleMatrix x]
+  (Matrix. x (.isVector x) {}))
+
 (defmethod matrix ::collection
   [seq-of-seqs]
   (if (number? (first seq-of-seqs))
-    (Matrix. (DoubleMatrix. 1 (count seq-of-seqs) (into-array Double/TYPE seq-of-seqs))
-             true {})
+    (matrix (DoubleMatrix. (into-array Double/TYPE seq-of-seqs)))
     (let [lengths (clojure.core/map count seq-of-seqs)
           flen    (first lengths)]
       (cond
-        (or (= (count lengths) 0) (some zero? lengths)) (Matrix. (DoubleMatrix. 0 0) false {})
+        (or (= (count lengths) 0) (some zero? lengths)) (matrix (DoubleMatrix. 0 0))
         (every? (partial = flen) lengths)
-        (Matrix.
+        (matrix
           (DoubleMatrix.
-            ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE %) seq-of-seqs)))
-          false {})
+            ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE %) seq-of-seqs))))
         :else (throw+ {:error "Cannot create a ragged matrix."})))))
-
-(defmethod matrix ::double-matrix
-  [^DoubleMatrix x]
-  (Matrix. x false {})) ;; TODO check for vector
 
 (defn diag
   "`diag` creates a diagonal matrix from a seq of numbers or extracts

@@ -18,7 +18,7 @@
 (def p (c/rnorm m))
 (def q (c/rnorm n))
 (def F (c/matrix (partition m (range (* n m)))))
-(def R (c/matrix (range m)))
+(def R (c/t (c/matrix (range m))))
 (def C (c/column (range n)))
 (def M (c/matrix [[1 2 3] [4 5 6]]))
 (def ridx (range n))
