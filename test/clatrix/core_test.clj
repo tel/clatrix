@@ -115,6 +115,7 @@
                               [1 2 3] [4 5 6]]))
 (expect [(c/matrix [[1 2 3]]) (c/matrix [[4 5 6]])] (map identity M))
 
+(expect (c/matrix [(range 1 m)]) (rest R))
 (expect (double (reduce + (range m))) (reduce + R))
 
 (expect `(c/matrix ~(map #(map double %) [[1 2] [3 4]]))

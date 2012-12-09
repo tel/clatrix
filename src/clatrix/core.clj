@@ -53,9 +53,12 @@
       (when-not (or (zero? r) (zero? c))
         this)))
   (next [this]
-    (let [r  (nrows this)]
-      (when (> r 1)
-        (matrix (.me (permute this :rowspec (range 1 r))) false {}))))
+    (let [[r c] (size this)]
+      (cond
+        (and vector? (= 1 c) (> r 1)) (matrix (.me (permute this :rowspec (range 1 r))) true {})
+        (and vector? (= 1 r) (> c 1)) (matrix (.me (get this 0 (range 1 c))) true {})
+        (and (not vector?) (> r 1)) (matrix (.me (permute this :rowspec (range 1 r))) false {})
+        :else nil)))
   clojure.lang.Counted
   (count [this]
     (if vector?
