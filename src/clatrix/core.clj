@@ -29,7 +29,7 @@
                (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat))))))))
   clojure.lang.IObj
   (withMeta [this metadata]
-    (matrix me metadata))
+    (Matrix. me vector? metadata))
   (meta [this]
     metadata)
   clojure.lang.ISeq
@@ -194,12 +194,12 @@
     (let [lengths (clojure.core/map count seq-of-seqs)
           flen    (first lengths)]
       (cond
-        (or (= (count lengths) 0) (some zero? lengths)) (Matrix. (DoubleMatrix. 0 0) false meta)
+        (or (= (count lengths) 0) (some zero? lengths)) (Matrix. (DoubleMatrix. 0 0) false {})
         (every? (partial = flen) lengths)
         (Matrix.
           (DoubleMatrix.
             ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE %) seq-of-seqs)))
-          false meta)
+          false {})
         :else (throw+ {:error "Cannot create a ragged matrix."})))))
 
 (defmethod matrix ::double-matrix
