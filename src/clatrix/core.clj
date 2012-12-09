@@ -104,7 +104,7 @@
 (promote-mfun* defn- ncols .columns)
 (promote-mfun* defn- nrows .rows)
 (defn size    [^Matrix m] [(nrows m) (ncols m)])
-(defn vector? [^Matrix m] (let [[n m] (size m)] (or (== n 1) (== m 1))))
+(defn vector? [^Matrix m] (.vector? m))
 (defn row?    [^Matrix m] (== 1 (first (size m))))
 (defn column? [^Matrix m] (== 1 (second (size m))))
 (defn square? [^Matrix m] (reduce == (size m)))
