@@ -49,35 +49,18 @@
       (vstack this x)
       (vstack this (matrix x))))
   (seq [this]
-    (when this
-      this))
+    (let [[r c] (size this)]
+      (when-not (or (zero? r) (zero? c))
+        this)))
   (next [this]
     (let [r  (nrows this)]
       (when (> r 1)
-        (matrix (:me (permute this :rowspec (range 1 r))) false {}))))
+        (matrix (.me (permute this :rowspec (range 1 r))) false {}))))
   clojure.lang.Counted
   (count [this]
     (if vector?
       (clojure.core/* (nrows this) (ncols this))
       (nrows this))))
-
-(declare pp)
-(defn map*
-  "Returns a lazy sequence consisting of the result of applying f to the
-  set of first items of each coll, followed by applying f to the set
-  of second items in each coll, until any one of the colls is
-  exhausted.  Any remaining items in other colls are ignored. Function
-  f should accept number-of-colls arguments."
-  {:added "1.0"
-   :static true}
-  ([f coll]
-   (lazy-seq
-     (when-let [s (seq coll)]
-       (if (matrix? s) (pp s) (println s))
-       (println)
-       (cons (f (first s)) (map* f (rest s)))))))
-
-;; TODO make all (Matrix.) use (matrix)
 
 (defn- me [^Matrix mat]
   (.me mat))
@@ -134,7 +117,7 @@
   (let [out (dotom .get m (int-arraytise r) (int-arraytise c))]
     (if (number? out)
       out
-      (with-meta (matrix out) (meta m)))))
+      (matrix out))))
 (defn set [^Matrix m ^long r ^long c ^double e]
   (dotom .put m r c e))
 
