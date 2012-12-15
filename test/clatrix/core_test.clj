@@ -14,6 +14,7 @@
 (def m 15)
 (def A (c/rnorm n m))
 (def B (c/* (c/t A) A))
+(def E (empty A))
 (def S (c/rnorm n n))
 (def p (c/rnorm m))
 (def q (c/rnorm n))
@@ -26,12 +27,15 @@
 
 ;; properties of A/S
 (expect Matrix A)
+(expect Matrix B)
+(expect Matrix E)
 (expect Matrix S)
 (expect Matrix p)
 (expect Matrix q)
 (expect Matrix F)
 (expect Matrix R)
 (expect Matrix C)
+(expect Matrix M)
 
 (given A
        (expect c/size [n m]
@@ -40,6 +44,15 @@
                c/column? false
                c/vector? false
                c/row?    false))
+
+(given E
+       (expect c/size [0 0]
+               c/matrix? true
+               c/square? true
+               c/column? false
+               c/vector? false
+               c/row? false))
+
 (given S
        (expect c/size [n n]
                c/matrix? true

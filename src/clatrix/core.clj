@@ -59,6 +59,8 @@
         (and vector? (= 1 r) (> c 1)) (matrix (.me (get this 0 (range 1 c))) true {})
         (and (not vector?) (> r 1)) (matrix (.me (permute this :rowspec (range 1 r))) false {})
         :else nil)))
+  (empty [this]
+    (matrix []))
   clojure.lang.Counted
   (count [this]
     (if vector?
@@ -671,8 +673,8 @@
                (if (= (second (size a)) (first (size b)))
                  (matrix (dotom .mmul a ^DoubleMatrix (me b)))
                  (throw+ {:exception "Matrix products must have compatible sizes."
-                          :asize (size a)
-                          :bsize (size b)}))
+                          :a-cols (ncols a)
+                          :b-rows (nrows b)}))
                (matrix? a) (matrix
                              (dotom .mmul a (double b)))
                (matrix? b) (matrix
