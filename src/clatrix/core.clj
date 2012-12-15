@@ -33,7 +33,12 @@
   (meta [this]
     metadata)
   clojure.lang.ISeq
-  (equiv [this x] (and (matrix? x) (.equals (.me this) (.me x))))
+  (equiv [this that]
+    (cond
+      (matrix? that) (.equals (.me this) (.me that))
+      (seq? that) (and (= (count this) (count that))
+                       (every? true? (clojure.core/map #(== %1 %2) this that))) 
+      :else (.equals (.me this) that)))
   (first [this]
     (let [[r c] (size this)]
       (cond

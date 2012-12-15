@@ -115,6 +115,8 @@
         (c/get F [0 7 9] [3 5 7]))
 
 ;; clojure sequence methods
+(expect R (range m))
+
 (expect (c/matrix (vector (range m))) (first F))
 (expect 0.0 (ffirst F))
 (expect (c/matrix [[4 5 6]]) (rest M))
