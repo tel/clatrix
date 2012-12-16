@@ -687,6 +687,16 @@
                :else       (clojure.core/* a b)))
   ([a b & as] (reduce * a (cons b as))))
 
+(defn mult
+  "Element-wise multiplication."
+  ([a b] (cond (and (matrix? a) (matrix? b))
+               (matrix (dotom .mul a ^DoubleMatrix (me b)))
+               (matrix? a) (matrix
+                             (dotom .mul a (double b)))
+               (matrix? b) (matrix
+                             (dotom .mul b (double a)))
+               :else       (clojure.core/* a b))))
+
 (defn -
   "`-` differences vectors and matrices (and scalars as if they were
   constant matrices). All the matrices must have the same size."
