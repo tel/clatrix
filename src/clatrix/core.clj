@@ -36,7 +36,7 @@
   (equiv [this that]
     (cond
       (matrix? that) (.equals (.me this) (.me that))
-      (seq? that) (and (= (count this) (count that))
+      (coll? that) (and (= (count this) (count that))
                        (every? true? (clojure.core/map #(== %1 %2) this that))) 
       :else (.equals (.me this) that)))
   (first [this]
