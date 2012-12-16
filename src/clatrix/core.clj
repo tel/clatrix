@@ -108,8 +108,8 @@
 ;;; column or row vector. Columns are default, though, by convention,
 ;;; matrices are sometimes represented as nested seqs in row-major
 ;;; order.
-(promote-mfun* defn- ncols .columns)
-(promote-mfun* defn- nrows .rows)
+(promote-mfun* defn ncols .columns)
+(promote-mfun* defn nrows .rows)
 (defn size    [^Matrix m] [(nrows m) (ncols m)])
 (defn vector? [^Matrix m] (.vector? m))
 (defn row?    [^Matrix m] (== 1 (first (size m))))
