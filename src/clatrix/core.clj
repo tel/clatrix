@@ -6,19 +6,21 @@
             Singular MatrixFunctions]
            [java.io Writer]))
 
-;;; Clatrix is a fast matrix library for Clojure written atop JBlas'
+;;; Clatrix is a fast matrix library for Clojure written atop [JBlas](http://jblas.org/)'
 ;;; ATLAS/LAPACK bindings. It's not intended to be the alpha and omega
 ;;; of linear algebra hosted on Clojure, but it should provide most of
 ;;; the basics for enabling more scientific/mathematical computation.
 
 ;;; # The clatrix matrix
 
-;;; Matrices are implemented as a thin wrapper over JBlas'
-;;; `DoubleMatrix` class. The wrapper is useful to program metadata
-;;; and protocols into the Matrix implementation and also to hide the
-;;; underlying Java methods. It's not hard to access them (they're
-;;; available through the `:me` keyword), but their use is clearly
-;;; dissuaded.
+;;; Matrix is implemented as a clojure Sequence data structure over JBlas'
+;;; `DoubleMatrix` class. Many of the basic Clojure methods, such as
+;;; `first`, `rest`, `cons`, and even some higher level functions, such as
+;;; `map` and `reduce`, works with `Matrix`.
+;;;
+;;; The `Matrix` type is useful to operate on matrices in Clojure
+;;; and to hide the underlying Java methods. It is not hard to access these
+;;; Java methods (they're available through the `me` function), but their use is dissuaded.
 
 (declare get permute size matrix matrix? row? nrows ncols vstack)
 
