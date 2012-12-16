@@ -697,6 +697,16 @@
                              (dotom .mul b (double a)))
                :else       (clojure.core/* a b))))
 
+(defn div
+  "Element-wise division."
+  ([a b] (cond (and (matrix? a) (matrix? b))
+               (matrix (dotom .div a ^DoubleMatrix (me b)))
+               (matrix? a) (matrix
+                             (dotom .div a (double b)))
+               (matrix? b) (matrix
+                             (dotom .rdiv b (double a)))
+               :else       (clojure.core// a b))))
+
 (defn -
   "`-` differences vectors and matrices (and scalars as if they were
   constant matrices). All the matrices must have the same size."

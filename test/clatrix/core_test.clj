@@ -219,6 +219,8 @@
 ;; arithmetic
 (expect (c/matrix [[2 4 6] [8 10 12]]) (c/mult M 2))
 (expect (c/matrix [[1 4 9] [16 25 36]]) (c/mult M M))
+(expect (c/matrix [[0.5 1.0 1.5] [2.0 2.5 3.0]]) (c/div M 2))
+(expect (c/constant 2 3 1.0) (c/div M M))
 
 ;; LU decomposition
 (let [lu (c/lu B)]
