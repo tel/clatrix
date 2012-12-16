@@ -157,7 +157,7 @@
   [^Matrix m]
   (if (vector? m)
     (vec (dotom .toArray m))
-    (vec (clojure.core/map vec (vec (dotom .toArray2 m))))))
+    (dense m)))
 
 ;;; # Matrix creation
 ;;;
