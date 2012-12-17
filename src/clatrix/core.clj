@@ -808,7 +808,7 @@
   `:ivectors`. Inproper symmetry hinting or failure to check for
   imaginary values will lead to mistakes in using the matrix
   spectrum."
-  ([^DoubleMatrix A]
+  ([^Matrix A]
    (cond
      (symmetric? A) (let [[vecs vals] (clojure.core/map #(matrix %)
                                                         (seq (dotom Eigen/symmetricEigenvectors A)))]
@@ -826,7 +826,7 @@
                                {:ivectors ivecs
                                 :ivalues  ivals})
                         out))))
-  ([^DoubleMatrix A ^DoubleMatrix B]
+  ([^Matrix A ^Matrix B]
    (let [A (maybe-symmetric A)
          B (maybe-symmetric B)]
      (if (and (symmetric? A) (symmetric? B))
