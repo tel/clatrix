@@ -842,9 +842,14 @@
   returning a map with keys `{:values L :left U :right V}` such that
   `A = U (diag L) V`. If `(size A)` is `[n m]` and the rank of `A` is
   `k`, we have the size of `U` as `[n k]`, `(diag L)` as `[k k]`,
-  and `(t V)` as `[k m]`."
-  [^Matrix A]
-  (let [[U L V] (dotom Singular/sparseSVD A)
+  and `(t V)` as `[k m]`.
+  
+  Set `:type full` for the full SVD
+  "
+  [^Matrix A & {:keys [type] :or {type :sparse}}]
+  (let [[U L V] (if (= type :full)
+                  (dotom Singular/fullSVD A)
+                  (dotom Singular/sparseSVD A)) 
         left (matrix U)
         right (matrix V)
         values (seq (.toArray L))]
