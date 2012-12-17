@@ -853,10 +853,12 @@
         left (matrix U)
         right (matrix V)
         values (seq (.toArray L))]
-    {:left left
-     :right right
-     :values values
-     :rank (count values)}))
+    (if (= type :values)
+      {:values (seq (.toArray (dotom Singular/SVDValues A)))}
+      {:left left
+       :right right
+       :values values
+       :rank (count values)})))
 
 (defn rank
   "`(rank A)` is the rank of matrix `A` as computed by `svd`."
