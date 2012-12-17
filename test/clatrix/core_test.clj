@@ -287,6 +287,8 @@
                    (c/diag values)
                    (c/t right)))))
 
+;; TODO test full SVD
+
 ;; matrix powers
 (expect (c/* B B) (c/pow B 2))
 
