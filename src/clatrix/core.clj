@@ -196,7 +196,7 @@
 (defmethod matrix ::collection
   [seq-of-seqs]
   (if (number? (first seq-of-seqs))
-    (matrix (DoubleMatrix. (into-array Double/TYPE seq-of-seqs)))
+    (matrix (DoubleMatrix. (into-array Double/TYPE (clojure.core/map double seq-of-seqs))))
     (let [lengths (clojure.core/map count seq-of-seqs)
           flen    (first lengths)]
       (cond
@@ -204,7 +204,7 @@
         (every? (partial = flen) lengths)
         (matrix
           (DoubleMatrix.
-            ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE %) seq-of-seqs))))
+            ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE (clojure.core/map double %)) seq-of-seqs))))
         :else (throw+ {:error "Cannot create a ragged matrix."})))))
 
 (defn diag
