@@ -217,7 +217,7 @@
       ;; since this isn't really a matrix algebraic property
       (let [n (apply min (size mat))]
         (clojure.core/map #(get mat % %) (range n))))
-    (let [di ^doubles (seq seq-or-matrix)]
+    (let [di (clojure.core/map double (seq seq-or-matrix))]
       (matrix (DoubleMatrix/diag (DoubleMatrix. ^doubles (into-array Double/TYPE di)))))))
 
 (promote-cfun* defn  ones DoubleMatrix/ones)
