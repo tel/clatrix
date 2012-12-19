@@ -117,6 +117,8 @@
 ;; clojure sequence methods
 (expect R (range m))
 
+(expect (c/matrix (range 1 m)) (rest R))
+(expect (c/matrix (range 1 n)) (rest C))
 (expect (c/matrix (vector (range m))) (first F))
 (expect 0.0 (ffirst F))
 (expect (c/matrix [[4 5 6]]) (rest M))

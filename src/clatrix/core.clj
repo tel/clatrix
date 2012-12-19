@@ -46,7 +46,10 @@
       (cond
         (or (zero? r) (zero? c)) nil
         (and vector? (or (= r 1) (= c 1))) (get this 0 0)
-        :else (get this 0 (range c)))))
+        :else (let [out (get this 0 (range c))]
+                (if (number? out)
+                  (matrix (vector out))
+                  out)))))
   (more [this]
     (if-let [nxt (next this)]
       nxt
@@ -62,9 +65,9 @@
   (next [this]
     (let [[r c] (size this)]
       (cond
-        (and vector? (= 1 c) (> r 1)) (matrix (.me (permute this :rowspec (range 1 r))) true {})
+        (and vector? (= 1 c) (> r 1)) (matrix (.me (get this (range 1 r) 0)) true {})
         (and vector? (= 1 r) (> c 1)) (matrix (.me (get this 0 (range 1 c))) true {})
-        (and (not vector?) (> r 1)) (matrix (.me (permute this :rowspec (range 1 r))) false {})
+        (and (not vector?) (> r 1)) (matrix (.me (get this (range 1 r) (range c))) false {})
         :else nil)))
   (empty [this]
     (matrix []))
@@ -72,7 +75,8 @@
   (count [this]
     (if vector?
       (clojure.core/* (nrows this) (ncols this))
-      (nrows this))))
+      (nrows this)))
+  clojure.lang.Sequential)
 
 (defn- me [^Matrix mat]
   (.me mat))
@@ -185,6 +189,8 @@
    (matrix x (.isVector x) {})) 
   ([^DoubleMatrix x vector? meta]
    (Matrix. x vector? meta)))
+
+;; TODO matrix ::matrix
 
 (defmethod matrix ::collection
   [seq-of-seqs]
@@ -349,8 +355,7 @@
   "`cols` explodes a `Matrix` into its constituent columns in the
   style of `rows`. See `rows` documentation for more detail."
   ([^Matrix mat]
-   (let [[n m] (size mat)]
-     (cols mat (range m))))
+   (cols mat (range (ncols mat))))
   ([^Matrix m ^longs idxs]
    (clojure.core/map #(matrix (dotom .getColumn m %)) idxs)))
 
