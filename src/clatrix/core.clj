@@ -317,8 +317,7 @@
   the arguments list via `flatten`, somewhat like the final argument
   to `apply`."
   [& vec-seq]
-  (let [vec-seq (flatten vec-seq)
-        row-counts (clojure.core/map #(first (size %)) vec-seq)
+  (let [row-counts (clojure.core/map nrows vec-seq)
         rows (first row-counts)]
     (if (every? (partial == rows) row-counts)
       (matrix (reduce #(DoubleMatrix/concatHorizontally
@@ -331,8 +330,7 @@
   "`vstack` is vertical concatenation in the style of `hstack`. See
   `hstack` documentation for more detail."
   [& vec-seq]
-  (let [vec-seq (flatten vec-seq)
-        col-counts (clojure.core/map #(second (size %)) vec-seq)
+  (let [col-counts (clojure.core/map ncols vec-seq)
         cols (first col-counts)]
     (if (every? (partial == cols) col-counts)
       (matrix (reduce #(DoubleMatrix/concatVertically
