@@ -117,7 +117,7 @@
 ;; clojure sequence methods
 (expect R (range m))
 
-(expect (c/matrix (range 1 m)) (rest R))
+(expect (c/matrix [(range 1 m)]) (rest R))
 (expect (c/matrix (range 1 n)) (rest C))
 (expect (c/matrix (vector (range m))) (first F))
 (expect 0.0 (ffirst F))
@@ -163,8 +163,8 @@
 
 ;; structure algebraic constraints
 (expect A (c/t (c/t A)))
-(expect A (c/hstack (c/cols A)))
-(expect A (c/vstack (c/rows A)))
+(expect A (apply c/hstack (c/cols A)))
+(expect A (apply c/vstack (c/rows A)))
 
 ;; constants
 (expect (double (* n m)) (reduce + (map (partial reduce +)
