@@ -127,6 +127,7 @@
 (expect (c/column (range 1 n)) (rest C))
 (expect (c/matrix (partition m (range m (* n m)))) (rest F))
 
+(expect (conj M [10 11 12]) (c/matrix [[1 2 3] [4 5 6] [10 11 12]]))
 (expect (conj M [[10 11 12]]) (c/matrix [[1 2 3] [4 5 6] [10 11 12]]))
 (expect (conj M M) (c/matrix [[1 2 3] [4 5 6]
                               [1 2 3] [4 5 6]]))

@@ -55,9 +55,10 @@
       nxt
       (matrix [])))
   (cons [this x]
-    (if (matrix? x)
-      (vstack this x)
-      (vstack this (matrix x))))
+    (cond
+      (matrix? x)  (vstack this x)
+      (and (coll? x) (number? (first x))) (vstack this (matrix (vector x)))
+      :else (vstack this (matrix x))))
   (seq [this]
     (let [[r c] (size this)]
       (when-not (or (zero? r) (zero? c))
