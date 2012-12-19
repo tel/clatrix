@@ -66,9 +66,9 @@
   (next [this]
     (let [[r c] (size this)]
       (cond
-        (and vector? (= 1 c) (> r 1)) (matrix (.me (get this (range 1 r) 0)) true {})
-        (and vector? (= 1 r) (> c 1)) (matrix (.me (get this 0 (range 1 c))) true {})
-        (and (not vector?) (> r 1)) (matrix (.me (get this (range 1 r) (range c))) false {})
+        (and vector? (= 1 c) (> r 1)) (matrix (.me (get this (range 1 r) 0)) true nil)
+        (and vector? (= 1 r) (> c 1)) (matrix (.me (get this 0 (range 1 c))) true nil)
+        (and (not vector?) (> r 1)) (matrix (.me (get this (range 1 r) (range c))) false nil)
         :else nil)))
   (empty [this]
     (matrix []))
