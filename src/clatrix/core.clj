@@ -187,7 +187,7 @@
 
 (defmethod matrix ::double-matrix
   ([^DoubleMatrix x]
-   (matrix x (.isVector x) {})) 
+   (matrix x (.isVector x) nil)) 
   ([^DoubleMatrix x vector? meta]
    (Matrix. x vector? meta)))
 

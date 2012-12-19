@@ -114,6 +114,8 @@
                    [138 140 142]])
         (c/get F [0 7 9] [3 5 7]))
 
+(expect nil (meta M))
+
 ;; clojure sequence methods
 (expect R (range m))
 
