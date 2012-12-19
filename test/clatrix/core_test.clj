@@ -138,6 +138,11 @@
 (expect `(c/matrix ~(map #(map double %) [[1 2] [3 4]]))
         (read* (str (c/matrix [[1 2] [3 4]]))))
 
+(expect [(c/matrix [4 19 34 49 64 79 94 109 124 139]) 
+         (c/matrix [7 22 37 52 67 82 97 112 127 142])
+         (c/matrix [6 21 36 51 66 81 96 111 126 141])]
+        (c/cols F [4 7 6]))
+
 ;; properties of id
 (given (c/id n)
        (expect c/size [n n]
