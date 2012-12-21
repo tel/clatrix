@@ -62,7 +62,7 @@
   (seq [this]
     (let [[r c] (size this)]
       (when-not (or (zero? r) (zero? c))
-        this)))
+        (Matrix. me vector? nil))))
   (next [this]
     (let [[r c] (size this)]
       (cond
@@ -220,7 +220,7 @@
     (let [di (clojure.core/map double (seq seq-or-matrix))]
       (matrix (DoubleMatrix/diag (DoubleMatrix. ^doubles (into-array Double/TYPE di)))))))
 
-(promote-cfun* defn  ones DoubleMatrix/ones)
+(promote-cfun* defn  ones DoubleMatrix/ones) ;; TODO wrap inside matrix
 (promote-cfun* defn zeros DoubleMatrix/zeros)
 (defn constant
   "`constant` creates a column or matrix with every element equal to
