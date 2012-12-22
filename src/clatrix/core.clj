@@ -79,7 +79,7 @@
       (nrows this)))
   clojure.lang.Sequential)
 
-(defn- me [^Matrix mat]
+(defn me [^Matrix mat]
   (.me mat))
 
 (defmacro dotom [name m & args]
