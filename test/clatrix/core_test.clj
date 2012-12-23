@@ -116,9 +116,11 @@
 
 (expect nil (meta M))
 
-;; clojure sequence methods
+;; equality
 (expect R (range m))
+(expect (double m) (c/matrix [m]))
 
+;; clojure sequence methods
 (expect (c/matrix [(range 1 m)]) (rest R))
 (expect (c/matrix (range 1 n)) (rest C))
 (expect (c/matrix (vector (range m))) (first F))

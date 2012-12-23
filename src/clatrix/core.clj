@@ -40,6 +40,7 @@
       (matrix? that) (.equals (.me this) (.me that))
       (coll? that) (and (= (count this) (count that))
                        (every? true? (clojure.core/map #(== %1 %2) this that))) 
+      (number? that) (and (= [1 1] (size this)) (= that (get this 0 0)))
       :else (.equals (.me this) that)))
   (first [this]
     (let [[r c] (size this)]
