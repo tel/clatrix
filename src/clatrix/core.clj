@@ -3,8 +3,7 @@
   (:use [slingshot.slingshot :only [throw+]])
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
             Decompose Decompose$LUDecomposition Eigen Solve Geometry
-            Singular MatrixFunctions]
-           [java.io Writer]))
+            Singular MatrixFunctions]))
 
 ;;; Clatrix is a fast matrix library for Clojure written atop [JBlas](http://jblas.org/)'
 ;;; ATLAS/LAPACK bindings. It's not intended to be the alpha and omega
@@ -944,7 +943,7 @@
 ;;; REPL) and, for more detail, a limited subset of its elements
 ;;; (`pp`).
 
-(defmethod print-method Matrix [mat ^Writer w]
+(defmethod print-method Matrix [mat ^java.io.Writer w]
   (.write w "#<Matrix ")
   (.write w (str (size mat)))
   (.write w ">"))
