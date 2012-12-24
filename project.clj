@@ -1,6 +1,6 @@
 (defproject com.quantisan/clatrix "0.2.2-SNAPSHOT"
   :description "Because using matrices in Clojure needs to not suck."
-  :url "https://quantisan.github.com/clatrix"
+  :url "http://quantisan.github.com/clatrix"
   :license {:name "MIT License"
             :url "http://www.opensource.org/licenses/MIT"}
   :resource-paths ["native"]
