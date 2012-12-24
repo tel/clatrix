@@ -940,76 +940,63 @@
 ;;; readable lisp form for `A` by using dense seq-of-seq
 ;;; semantics. Below we demonstrate non-readable printing methods for
 ;;; `Matrix` which show only its size (`print-method`, used by the
-;;; REPL) and, for more detail, a limited subset of its elements
-;;; (`pp`).
-
-(defmethod print-method Matrix [mat ^java.io.Writer w]
-  (.write w "#<Matrix ")
-  (.write w (str (size mat)))
-  (.write w ">"))
+;;; REPL).
 
 ;;; (This function is pretty ugly...)
 
-(defn pp
-  "`pp` pretty prints `Matrix` objects. The second and third optional
-  arguments are for large, precise matrices, specifying the amount of
-  elements to show and their precision respectively. By default, at
-  most 3 rows and columns at the beginning and end of the matrix are
-  printed with elements having 3 significant figures."
-  ([^Matrix mat] (pp mat 3 2))
-  ([^Matrix mat prec] (pp mat 3 prec))
-  ([^Matrix mat nbits prec]
-   (let [[n m] (size mat)
-         small-rows (< n (* nbits 2))
-         small-cols (< m (clojure.core/* nbits 2))
-         rowset (if (< n (clojure.core/* nbits 2))
-                  (range n)
-                  (concat (range nbits) (range (clojure.core/- n nbits) n)))
-         colset (if (< m (clojure.core/* nbits 2))
-                  (range m)
-                  (concat (range nbits) (range (clojure.core/- m nbits) m)))
-         submat (apply hstack (cols (apply vstack (rows mat rowset)) colset))
-         [n m] (size submat)
-         fmt (str "% ." prec "e ")
-         header (apply format " A %dx%d matrix" (size mat))]
-     ;; Print the header
-     (println header)
-     (print " ")
-     (doseq [i (range (dec (count header)))] (print "-"))
-     (print "\n")
-     ;; Print the matrix
-     (if small-rows
-       (doseq [i (range n)]
-         (if small-cols
-           (doseq [j (range m)]
-             (print (format fmt (slice submat i j))))
-           (do (doseq [j (range nbits)]
-                 (print (format fmt (slice submat i j))))
-             (print " . ")
-             (doseq [j (range nbits (clojure.core/* 2 nbits))]
-               (print (format fmt (slice submat i j))))))
-         (print "\n"))
-       (do (doseq [i (range nbits)]
-             (if small-cols
-               (doseq [j (range m)]
-                 (print (format fmt (slice submat i j))))
-               (do (doseq [j (range nbits)]
-                     (print (format fmt (slice submat i j))))
-                 (print " . ")
-                 (doseq [j (range nbits (clojure.core/* 2 nbits))]
-                   (print (format fmt (slice submat i j))))))
-             (print "\n"))
-         (println " ... ")
-         (doseq [i (range nbits (clojure.core/* 2 nbits))]
-           (if small-cols
-             (doseq [j (range m)]
-               (print (format fmt (slice submat i j))))
-             (do (doseq [j (range nbits)]
-                   (print (format fmt (slice submat i j))))
-               (print " . ")
-               (doseq [j (range nbits (clojure.core/* 2 nbits))]
-                 (print (format fmt (slice submat i j))))))
-           (print "\n")))))))
+(defmethod print-method Matrix [mat ^java.io.Writer w]
+  (let [[nbits prec] [3 2]
+        [n m] (size mat)
+        small-rows (< n (* nbits 2))
+        small-cols (< m (clojure.core/* nbits 2))
+        rowset (if (< n (clojure.core/* nbits 2))
+                 (range n)
+                 (concat (range nbits) (range (clojure.core/- n nbits) n)))
+        colset (if (< m (clojure.core/* nbits 2))
+                 (range m)
+                 (concat (range nbits) (range (clojure.core/- m nbits) m)))
+        submat (apply hstack (cols (apply vstack (rows mat rowset)) colset))
+        [n m] (size submat)
+        fmt (str "% ." prec "e ")
+        header (apply format " A %dx%d matrix\n" (size mat))]
+    ;; Print the header
+    (.write w header)
+    (.write w " ")
+    (doseq [i (range (dec (count header)))] (.write w "-"))
+    (.write w "\n")
+    ;; Print the matrix
+    (if small-rows
+      (doseq [i (range n)]
+        (if small-cols
+          (doseq [j (range m)]
+            (.write w (format fmt (slice submat i j))))
+          (do (doseq [j (range nbits)]
+                (print (format fmt (slice submat i j))))
+            (.write w " . ")
+            (doseq [j (range nbits (clojure.core/* 2 nbits))]
+              (.write w (format fmt (slice submat i j))))))
+        (.write w "\n"))
+      (do (doseq [i (range nbits)]
+            (if small-cols
+              (doseq [j (range m)]
+                (.write w (format fmt (slice submat i j))))
+              (do (doseq [j (range nbits)]
+                    (.write w (format fmt (slice submat i j))))
+                (.write w " . ")
+                (doseq [j (range nbits (clojure.core/* 2 nbits))]
+                  (.write w (format fmt (slice submat i j))))))
+            (.write w "\n"))
+        (.write w " ... \n")
+        (doseq [i (range nbits (clojure.core/* 2 nbits))]
+          (if small-cols
+            (doseq [j (range m)]
+              (.write w (format fmt (slice submat i j))))
+            (do (doseq [j (range nbits)]
+                  (.write w (format fmt (slice submat i j))))
+              (.write w " . ")
+              (doseq [j (range nbits (clojure.core/* 2 nbits))]
+                (.write w (format fmt (slice submat i j))))))
+          (.write w "\n"))))))
 
 ;;;  JBLAS provides several fast and useful mathematical functions,
 ;;;  mirroring Java's Math namespace, applied
