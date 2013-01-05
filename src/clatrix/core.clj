@@ -132,7 +132,20 @@
 ;;; The most basic matrix operation is elementwise getting and
 ;;; setting; setting should be dissuaded as well for a Clojure
 ;;; wrapper, but it's too useful to hide
-(defn get [^Matrix m r c]
+;;;
+;;; Example:
+;;; <code><pre>
+;;; (def M (matrix [[1 2] [3 4]]))
+;;; (get M 1 1)  ;; 4.0
+;;; (get M 0 [0 1]) ;; (matrix [[1 2]])
+;;; (get M [0 1] [0 1]) ;; M
+;;; </pre></code>
+
+(defn get
+  "Given matrix `m`, get row `r` and column `c`, where `r` and/or
+  `c` can be either a value or vector to return a single value or
+  a sub-matrix."
+  [^Matrix m r c]
   (let [out (dotom .get m (int-arraytise r) (int-arraytise c))]
     (if (number? out)
       out
@@ -881,7 +894,9 @@ Uses the same algorithm as java's default Random constructor."
   `k`, we have the size of `U` as `[n k]`, `(diag L)` as `[k k]`,
   and `(t V)` as `[k m]`.
 
-  Set `:type full` for the full SVD
+  Optional key:
+  `:type` --  `:full` for the full SVD
+              `:value` for SVD values only
   "
   [^Matrix A & {:keys [type] :or {type :sparse}}]
   (let [[U L V] (if (= type :full)
