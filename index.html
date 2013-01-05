@@ -3028,32 +3028,86 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>clatrix/clatrix -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name">clatrix/clatrix</h1><h2 class="project-version">0.1.0-SNAPSHOT</h2><br /><p>Because using matrices in Clojure needs to not suck.</p>
-</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.3.0</td></tr><tr><td class="dep-name">slingshot</td><td class="dotted"><hr /></td><td class="dep-version">0.8.0</td></tr><tr><td class="dep-name">jblas/jblas</td><td class="dotted"><hr /></td><td class="dep-version">1.2.1</td></tr><tr><td class="dep-name">jblas/native</td><td class="dotted"><hr /></td><td class="dep-version">1.2.0</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#clatrix.core">clatrix.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#clatrix.core" name="clatrix.core"><h1 class="project-name">clatrix.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</script><title>clatrix/clatrix -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name">clatrix/clatrix</h1><h2 class="project-version">0.2.0-SNAPSHOT</h2><br /><p>Because using matrices in Clojure needs to not suck.</p>
+</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.4.0</td></tr><tr><td class="dep-name">slingshot</td><td class="dotted"><hr /></td><td class="dep-version">0.8.0</td></tr><tr><td class="dep-name">org.jblas/jblas</td><td class="dotted"><hr /></td><td class="dep-version">1.2.2</td></tr></table></div><div class="dependencies"><h3>dev dependencies</h3><table><tr><td class="dep-name">lein-expectations</td><td class="dotted"><hr /></td><td class="dep-version">0.0.8</td></tr><tr><td class="dep-name">expectations</td><td class="dotted"><hr /></td><td class="dep-version">1.4.16</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#clatrix.core">clatrix.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#clatrix.core" name="clatrix.core"><h1 class="project-name">clatrix.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns clatrix.core
   (:refer-clojure :exclude [get set map-indexed map rand vector? + - * pp])
   (:use [slingshot.slingshot :only [throw+]])
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
             Decompose Decompose$LUDecomposition Eigen Solve Geometry
             Singular MatrixFunctions]
-           [java.io Writer]))</pre></td></tr><tr><td class="docs"><p>Clatrix is a fast matrix library for Clojure written atop JBlas'
+           [org.jblas.util Random]
+           [java.io Writer]))</pre></td></tr><tr><td class="docs"><p>Clatrix is a fast matrix library for Clojure written atop <a href="http://jblas.org/">JBlas</a>'
 ATLAS/LAPACK bindings. It's not intended to be the alpha and omega
 of linear algebra hosted on Clojure, but it should provide most of
 the basics for enabling more scientific/mathematical computation.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><h1>The clatrix matrix</h1>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Matrices are implemented as a thin wrapper over JBlas'
-<code>DoubleMatrix</code> class. The wrapper is useful to program metadata
-and protocols into the Matrix implementation and also to hide the
-underlying Java methods. It's not hard to access them (they're
-available through the <code>:me</code> keyword), but their use is clearly
-dissuaded.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Matrix is implemented as a clojure Sequence data structure over JBlas'
+<code>DoubleMatrix</code> class. Many of the basic Clojure methods, such as
+<code>first</code>, <code>rest</code>, <code>cons</code>, and even some higher level functions, such as
+<code>map</code> and <code>reduce</code>, works with <code>Matrix</code>.</p>
+
+<p>The <code>Matrix</code> type is useful to operate on matrices in Clojure
+and to hide the underlying Java methods. It is not hard to access these
+Java methods (they're available through the <code>me</code> function), but their use is dissuaded.</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defrecord Matrix [^DoubleMatrix me]
+</td><td class="codes"><pre class="brush: clojure">(declare get permute size matrix matrix? row? nrows ncols vstack)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(deftype Matrix [^DoubleMatrix me ^Boolean vector? ^clojure.lang.IPersistentMap metadata]
   Object
   (toString [^Matrix mat]
     (str (list `matrix
-               (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat)))))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- me [^Matrix mat]
+               (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat))))))))
+  clojure.lang.IObj
+  (withMeta [this metadata]
+    (Matrix. me vector? metadata))
+  (meta [this]
+    metadata)
+  clojure.lang.ISeq
+  (equiv [this that]
+    (cond
+      (matrix? that) (.equals (.me this) (.me that))
+      (coll? that) (and (= (count this) (count that))
+                       (every? true? (clojure.core/map #(== %1 %2) this that)))
+      (number? that) (and (= [1 1] (size this)) (= that (get this 0 0)))
+      :else (.equals (.me this) that)))
+  (first [this]
+    (let [[r c] (size this)]
+      (cond
+        (or (zero? r) (zero? c)) nil
+        (and vector? (or (= r 1) (= c 1))) (get this 0 0)
+        :else (let [out (get this 0 (range c))]
+                (if (number? out)
+                  (matrix (vector out))
+                  out)))))
+  (more [this]
+    (if-let [nxt (next this)]
+      nxt
+      (matrix [])))
+  (cons [this x]
+    (cond
+      (matrix? x)  (vstack this x)
+      (and (coll? x) (number? (first x))) (vstack this (matrix (vector x)))
+      :else (vstack this (matrix x))))
+  (seq [this]
+    (let [[r c] (size this)]
+      (when-not (or (zero? r) (zero? c))
+        (Matrix. me vector? nil))))
+  (next [this]
+    (let [[r c] (size this)]
+      (cond
+        (and vector? (= 1 c) (&gt; r 1)) (matrix (.me (get this (range 1 r) 0)) true nil)
+        (and vector? (= 1 r) (&gt; c 1)) (matrix (.me (get this 0 (range 1 c))) true nil)
+        (and (not vector?) (&gt; r 1)) (matrix (.me (get this (range 1 r) (range c))) false nil)
+        :else nil)))
+  (empty [this]
+    (matrix []))
+  clojure.lang.Counted
+  (count [this]
+    (if vector?
+      (clojure.core/* (nrows this) (ncols this))
+      (nrows this)))
+  clojure.lang.Sequential)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn me [^Matrix mat]
   (.me mat))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmacro dotom [name m &amp; args]
   `(~name ^DoubleMatrix (me ~m) ~@args))</pre></td></tr><tr><td class="docs"><h1>Java interop</h1>
@@ -3064,8 +3118,8 @@ few convenience macros used for the thinnest parts of the wrapper.</p>
   (let [n (gensym)
         m (gensym)]
     `(~defname ~name
-       ([^long ~n] (Matrix. (~fname ~n)))
-       ([^long ~n ~m] (Matrix. (~fname ~n ~m))))))</pre></td></tr><tr><td class="docs">
+               ([^long ~n] (matrix (~fname ~n)))
+               ([^long ~n ~m] (matrix (~fname ~n ~m))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmacro promote-mfun* [defname name fname]
   (let [m (gensym)]
     `(~defname ~name [^Matrix ~m] (dotom ~fname ~m))))</pre></td></tr><tr><td class="docs"><h1>Basics of matrix objects</h1>
@@ -3079,17 +3133,34 @@ also defines a number of other ideas such as whether a matrix is a
 column or row vector. Columns are default, though, by convention,
 matrices are sometimes represented as nested seqs in row-major
 order.</p>
-</td><td class="codes"><pre class="brush: clojure">(promote-mfun* defn- ncols .columns)
-(promote-mfun* defn- nrows .rows)
+</td><td class="codes"><pre class="brush: clojure">(promote-mfun* defn ncols .columns)
+(promote-mfun* defn nrows .rows)
 (defn size    [^Matrix m] [(nrows m) (ncols m)])
-(defn vector? [^Matrix m] (let [[n m] (size m)] (or (== n 1) (== m 1))))
+(defn vector? [^Matrix m] (.vector? m))
 (defn row?    [^Matrix m] (== 1 (first (size m))))
 (defn column? [^Matrix m] (== 1 (second (size m))))
-(defn square? [^Matrix m] (reduce == (size m)))</pre></td></tr><tr><td class="docs"><p>The most basic matrix operation is elementwise getting and
+(defn square? [^Matrix m] (reduce == (size m)))</pre></td></tr><tr><td class="docs"><p>Convert a seq to int array or pass through for a number.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- int-arraytise
+  [x] (if (coll? x) (int-array x) x))</pre></td></tr><tr><td class="docs"><p>The most basic matrix operation is elementwise getting and
 setting; setting should be dissuaded as well for a Clojure
-wrapper, but it's too useful to hide.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn get [^Matrix m ^long r ^long c]
-  (dotom .get m r c))
+wrapper, but it's too useful to hide</p>
+
+<p>Example:
+<code><pre>
+(def M (matrix [[1 2] [3 4]]))
+(get M 1 1)  ;; 4.0
+(get M 0 [0 1]) ;; (matrix [[1 2]])
+(get M [0 1] [0 1]) ;; M
+</pre></code></p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Given matrix <code>m</code>, get row <code>r</code> and column <code>c</code>, where <code>r</code> and/or
+  <code>c</code> can be either a value or vector to return a single value or
+  a sub-matrix.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn get
+  [^Matrix m r c]
+  (let [out (dotom .get m (int-arraytise r) (int-arraytise c))]
+    (if (number? out)
+      out
+      (matrix out))))
 (defn set [^Matrix m ^long r ^long c ^double e]
   (dotom .put m r c e))</pre></td></tr><tr><td class="docs"><p>Already this is sufficient to get some algebraic matrix
 properties, such as</p>
@@ -3112,26 +3183,40 @@ structures like 2-nested vectors.</p>
   [^Matrix m]
   (if (vector? m)
     (vec (dotom .toArray m))
-    (vec (clojure.core/map vec (vec (dotom .toArray2 m))))))</pre></td></tr><tr><td class="docs"><h1>Matrix creation</h1>
+    (dense m)))</pre></td></tr><tr><td class="docs"><h1>Matrix creation</h1>
 
 <p>Matrices can be created from a number of simple specifications,
 such as (1) direct coercions, (2) element-constant matrices and
 vectors, and (3) identity matrices.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><code>column</code> coerces a seq of numbers to a column <code>Matrix</code>.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn column
+</td><td class="codes"><pre class="brush: clojure">(defn column  ;; TODO remove from api
   [^doubles seq]
-  (Matrix. (DoubleMatrix. ^doubles (into-array Double/TYPE seq))))</pre></td></tr><tr><td class="docs"><p><code>matrix</code> creates a <code>Matrix</code> from a seq of seqs, specifying the
+  (matrix seq))</pre></td></tr><tr><td class="docs"><p><code>matrix</code> creates a <code>Matrix</code> from a seq of seqs, specifying the
   matrix in row-major order. The length of each seq must be
   identical or an error is throw.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn matrix
+</td><td class="codes"><pre class="brush: clojure">(derive java.util.Collection ::collection)
+(derive DoubleMatrix ::double-matrix)
+(defmulti matrix
+  (fn [m &amp; args] (class m)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod matrix ::double-matrix
+  ([^DoubleMatrix x]
+   (matrix x (.isVector x) nil))
+  ([^DoubleMatrix x vector? meta]
+   (Matrix. x vector? meta)))</pre></td></tr><tr><td class="docs"><p>TODO matrix ::matrix</p>
+</td><td class="codes"></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod matrix ::collection
   [seq-of-seqs]
-  (let [lengths (clojure.core/map count seq-of-seqs)
-        l0      (first lengths)]
-    (if (every? (partial = l0) lengths)
-      (Matrix.
-       (DoubleMatrix.
-        ^&quot;[[D&quot; (into-array (clojure.core/map #(into-array Double/TYPE %) seq-of-seqs))))
-      (throw+ {:error &quot;Cannot create a ragged matrix.&quot;}))))</pre></td></tr><tr><td class="docs"><p><code>diag</code> creates a diagonal matrix from a seq of numbers or extracts
+  (if (number? (first seq-of-seqs))
+    (matrix (DoubleMatrix. (into-array Double/TYPE (clojure.core/map double seq-of-seqs))))
+    (let [lengths (clojure.core/map count seq-of-seqs)
+          flen    (first lengths)]
+      (cond
+        (or (= (count lengths) 0) (some zero? lengths)) (matrix (DoubleMatrix. 0 0))
+        (every? (partial = flen) lengths)
+        (matrix
+          (DoubleMatrix.
+            ^&quot;[[D&quot; (into-array (clojure.core/map #(into-array Double/TYPE (clojure.core/map double %)) seq-of-seqs))))
+        :else (throw+ {:error &quot;Cannot create a ragged matrix.&quot;})))))</pre></td></tr><tr><td class="docs"><p><code>diag</code> creates a diagonal matrix from a seq of numbers or extracts
   the diagonal of a <code>Matrix</code> as a seq.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn diag
   [seq-or-matrix]
@@ -3141,22 +3226,22 @@ vectors, and (3) identity matrices.</p>
       ;; since this isn't really a matrix algebraic property
       (let [n (apply min (size mat))]
         (clojure.core/map #(get mat % %) (range n))))
-    (let [di ^doubles (seq seq-or-matrix)]
-      (Matrix. (DoubleMatrix/diag (DoubleMatrix. ^doubles (into-array Double/TYPE di)))))))</pre></td></tr><tr><td class="docs"><p><code>constant</code> creates a column or matrix with every element equal to
-   the same constant value.</p>
-</td><td class="codes"><pre class="brush: clojure">(promote-cfun* defn  ones DoubleMatrix/ones)
-(promote-cfun* defn zeros DoubleMatrix/zeros)
+    (let [di (clojure.core/map double (seq seq-or-matrix))]
+      (matrix (DoubleMatrix/diag (DoubleMatrix. ^doubles (into-array Double/TYPE di)))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(promote-cfun* defn  ones DoubleMatrix/ones) ;; TODO wrap inside matrix</pre></td></tr><tr><td class="docs"><p>TODO wrap inside matrix</p>
+
+<p><code>constant</code> creates a column or matrix with every element equal to
+  the same constant value.</p>
+</td><td class="codes"><pre class="brush: clojure">(promote-cfun* defn zeros DoubleMatrix/zeros)
 (defn constant
-  ([^long n ^double c] 
-     (Matrix.
-      (doto (DoubleMatrix/ones n)
-        (.muli c))))
-  ([^long n ^long m ^double c] 
-     (Matrix.
-      (doto (DoubleMatrix/ones n m) 
-        (.muli c)))))</pre></td></tr><tr><td class="docs"><p><code>(id n)</code> is the <code>n</code>x<code>n</code> identity matrix.</p>
+  ([^long n ^double c]
+   (matrix (doto (DoubleMatrix/ones n)
+             (.muli c))))
+  ([^long n ^long m ^double c]
+   (matrix (doto (DoubleMatrix/ones n m)
+             (.muli c)))))</pre></td></tr><tr><td class="docs"><p><code>(id n)</code> is the <code>n</code>x<code>n</code> identity matrix.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn id
-  [^long n] (Matrix. (DoubleMatrix/eye n)))</pre></td></tr><tr><td class="docs"><h2>Reshaping</h2>
+  [^long n] (matrix (DoubleMatrix/eye n)))</pre></td></tr><tr><td class="docs"><h2>Reshaping</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><code>(reshape A p q)</code> coerces an <code>n</code>x<code>m</code> matrix to be <code>p</code>x<code>q</code> so long
   as <code>pq = nm</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn reshape
@@ -3192,75 +3277,93 @@ step which is facilitated by <code>from-indices</code>.</p>
     (doseq [i (range n)
             j (range n)]
       (aset ary i j (fun i j)))
-    (Matrix. (DoubleMatrix. ^&quot;[[D&quot; ary))))</pre></td></tr><tr><td class="docs"><h2>Random matrices</h2>
+    (matrix (DoubleMatrix. ^&quot;[[D&quot; ary))))</pre></td></tr><tr><td class="docs"><h2>Random matrices</h2>
 
 <p>It's also useful to generate random matrices. These are
 elementwise independent Unif(0,1) and normal.</p>
+
+<p>You can use <code>seed</code>, <code>unseed</code>, and <code>with-seed</code> to make repeatable
+sequences of random numbers (for testing, for example,) similar
+to <code>seed(n)</code> in R.</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(promote-cfun* defn  rand   DoubleMatrix/rand)
-(promote-cfun* defn- randn* DoubleMatrix/randn) </pre></td></tr><tr><td class="docs"><p><code>(rnorm mu sigma n m)</code> is an <code>n</code>x<code>m</code> <code>Matrix</code> with normally
-   distributed random elements with mean <code>mu</code> and standard deviation
-   <code>sigma</code>.</p>
+(promote-cfun* defn- randn* DoubleMatrix/randn)</pre></td></tr><tr><td class="docs"><p><code>(rnorm mu sigma n m)</code> is an <code>n</code>x<code>m</code> <code>Matrix</code> with normally
+  distributed random elements with mean <code>mu</code> and standard deviation
+  <code>sigma</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn rnorm
   ([^double mu ^double sigma ^long n ^long m]
-     (Matrix.
-      (doto (dotom .muli (randn* n m) sigma)
-        (.addi mu))))
+   (matrix (doto (dotom .muli (randn* n m) sigma)
+             (.addi mu))))
   ([^double mu ^double sigma ^long n]
-     (Matrix.
-      (doto (dotom .muli (randn* n) sigma)
-        (.addi mu))))
+   (matrix (doto (dotom .muli (randn* n) sigma)
+             (.addi mu))))
   ([^long n ^long m] (randn* n m))
-  ([^long n] (randn* n)))</pre></td></tr><tr><td class="docs"><h2>Element algebra</h2>
+  ([^long n] (randn* n)))</pre></td></tr><tr><td class="docs"><p>You can set the seed used to generate the values in a random matrix if you
+need repeatablity for some reason.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn seed
+  [n]
+  (Random/seed n))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defonce ^:private uniquifier (atom 8682522807148012))</pre></td></tr><tr><td class="docs"><p>When you are done changing the seed, you can go back to a pseudo-random seed.
+Uses the same algorithm as java's default Random constructor.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn unseed
+  []
+  (Random/seed (swap! uniquifier
+                      #(bit-xor
+                        (unchecked-multiply (long %) 181783497276652981)
+                        (System/nanoTime)))))</pre></td></tr><tr><td class="docs"><p>If you want to control the scope of a seed you've set, you can use this convenient macro.</p>
+</td><td class="codes"><pre class="brush: clojure">(defmacro with-seed
+  [n &amp; body]
+  `(do
+     (seed ~n)
+     (try ~@body
+          (finally
+            (unseed)))))</pre></td></tr><tr><td class="docs"><h2>Element algebra</h2>
 
 <p>Matrices can also be permuted, flipped, transposed, stacked, and
 split to form more complex matrices. This "element algebra" is a
 powerful way of building more complex matrices.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><code>(t A)</code> is the transpose of <code>A</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn t
-  [^Matrix mat] (Matrix. (dotom .transpose mat)))</pre></td></tr><tr><td class="docs"><p><code>hstack</code> concatenates a number of matrices by aligning them
+  [^Matrix mat] (matrix (dotom .transpose mat)))</pre></td></tr><tr><td class="docs"><p><code>hstack</code> concatenates a number of matrices by aligning them
   horizontally. Each matrix must have the same number of
   rows. Optionally, the any entry may be a seq, which is spliced into
   the arguments list via <code>flatten</code>, somewhat like the final argument
   to <code>apply</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn hstack
   [&amp; vec-seq]
-  (let [vec-seq (flatten vec-seq)
-        row-counts (clojure.core/map #(first (size %)) vec-seq)
+  (let [row-counts (clojure.core/map nrows vec-seq)
         rows (first row-counts)]
     (if (every? (partial == rows) row-counts)
-      (Matrix. (reduce #(DoubleMatrix/concatHorizontally
+      (matrix (reduce #(DoubleMatrix/concatHorizontally
                          ^DoubleMatrix %1
                          ^DoubleMatrix (me %2))
-                       (me (first vec-seq))
-                       (rest vec-seq))))))</pre></td></tr><tr><td class="docs"><p><code>vstack</code> is vertical concatenation in the style of <code>hstack</code>. See
+                      (me (first vec-seq))
+                      (rest vec-seq))))))</pre></td></tr><tr><td class="docs"><p><code>vstack</code> is vertical concatenation in the style of <code>hstack</code>. See
   <code>hstack</code> documentation for more detail.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn vstack
   [&amp; vec-seq]
-  (let [vec-seq (flatten vec-seq)
-        col-counts (clojure.core/map #(second (size %)) vec-seq)
+  (let [col-counts (clojure.core/map ncols vec-seq)
         cols (first col-counts)]
     (if (every? (partial == cols) col-counts)
-      (Matrix. (reduce #(DoubleMatrix/concatVertically
+      (matrix (reduce #(DoubleMatrix/concatVertically
                          ^DoubleMatrix %1
                          ^DoubleMatrix (me %2))
-                       (me (first vec-seq))
-                       (rest vec-seq))))))</pre></td></tr><tr><td class="docs"><p><code>rows</code> explodes a <code>Matrix</code> into its constituent rows. By default,
-   all the rows are returned in normal order, but particular indices
-   can be specified by the second argument.</p>
+                      (me (first vec-seq))
+                      (rest vec-seq))))))</pre></td></tr><tr><td class="docs"><p><code>rows</code> explodes a <code>Matrix</code> into its constituent rows. By default,
+  all the rows are returned in normal order, but particular indices
+  can be specified by the second argument.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn rows
-  ([^Matrix mat]
-     (let [[n m] (size mat)]
-       (rows mat (range n))))
+  ([^Matrix mat]   ;; TODO use map and get on datastruct
+   (let [[n m] (size mat)]
+     (rows mat (range n))))
   ([^Matrix m ^longs idxs]
-     (clojure.core/map #(Matrix. (dotom .getRow m %)) idxs)))</pre></td></tr><tr><td class="docs"><p><code>cols</code> explodes a <code>Matrix</code> into its constituent columns in the
-   style of <code>rows</code>. See <code>rows</code> documentation for more detail.</p>
+   (clojure.core/map #(matrix (dotom .getRow m %)) idxs)))</pre></td></tr><tr><td class="docs"><p><code>cols</code> explodes a <code>Matrix</code> into its constituent columns in the
+  style of <code>rows</code>. See <code>rows</code> documentation for more detail.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn cols
   ([^Matrix mat]
-     (let [[n m] (size mat)]
-       (cols mat (range m))))
+   (cols mat (range (ncols mat))))
   ([^Matrix m ^longs idxs]
-     (clojure.core/map #(Matrix. (dotom .getColumn m %)) idxs)))</pre></td></tr><tr><td class="docs"><p>From this we also get generalized matrix permutations almost for free.</p>
+   (clojure.core/map #(matrix (dotom .getColumn m %)) idxs)))</pre></td></tr><tr><td class="docs"><p>From this we also get generalized matrix permutations almost for free.</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- permute-rows [^Matrix mat rowspec]
   (if rowspec (apply vstack (rows mat rowspec)) mat))</pre></td></tr><tr><td class="docs">
@@ -3270,7 +3373,7 @@ powerful way of building more complex matrices.</p>
   providing seqs listing the indices of the permutation.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn permute
     [^Matrix
-  mat &amp; {:keys [r c rowspec colspec]}]
+                                                            mat &amp; {:keys [r c rowspec colspec]}]
   (let [[n m] (size mat)
         r (or r rowspec)
         c (or c colspec)]
@@ -3356,18 +3459,18 @@ sizes of the constant and 0 matrices.</p>
             ;; over each row and column
             constraint-map
             (reduce
-             (fn [hash [i j]]
-               (let [constr (init-map [i j])]
-                 (if (or (:rows constr) (:cols constr))
-                   ;; Look up and to the left for constraint violations,
-                   ;; locking in constraints if they don't already exist
-                   (reduce #(update-hash-with-constr %1 constr i %2 :rows)
-                           (reduce #(update-hash-with-constr %1 constr %2 j :cols)
-                                   hash (range n))
-                           (range m))
-                   hash)))
-             init-map
-             indices)]
+              (fn [hash [i j]]
+                (let [constr (init-map [i j])]
+                  (if (or (:rows constr) (:cols constr))
+                    ;; Look up and to the left for constraint violations,
+                    ;; locking in constraints if they don't already exist
+                    (reduce #(update-hash-with-constr %1 constr i %2 :rows)
+                            (reduce #(update-hash-with-constr %1 constr %2 j :cols)
+                                    hash (range n))
+                            (range m))
+                    hash)))
+              init-map
+              indices)]
         ;; Use the constraint map to build the final matrix
         (apply vstack
                (for [i (range n)]
@@ -3391,10 +3494,10 @@ sizes of the constant and 0 matrices.</p>
 </td><td class="codes"><pre class="brush: clojure">(defmacro block
   [blockspec]
   `(block-fn
-    ~(vec (clojure.core/map
-           #(vec (clojure.core/map
-                  (fn [e] (if (iswild e) 0 e)) %))
-           blockspec))))</pre></td></tr><tr><td class="docs"><h1>Slicing</h1>
+     ~(vec (clojure.core/map
+             #(vec (clojure.core/map
+                     (fn [e] (if (iswild e) 0 e)) %))
+             blockspec))))</pre></td></tr><tr><td class="docs"><h1>Slicing</h1>
 
 <p>As a more convenient API than looping over <code>get</code> and <code>set</code>, we
 have slice notation. This uses wildcard symbols (like in <code>block</code>)
@@ -3413,24 +3516,24 @@ in order to represent full index sets.</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- slicer
   ([^Matrix matrix rowspec colspec]
-     (cond (and (iswild rowspec) (iswild colspec)) matrix
-           (iswild rowspec) `(Matrix. (dotom .getColumn ~matrix ~colspec))
-           (iswild colspec) `(Matrix. (dotom .getRow    ~matrix ~rowspec))
-           :else            `(get                 ~matrix ~rowspec ~colspec)))
+   (cond (and (iswild rowspec) (iswild colspec)) matrix
+         (iswild rowspec) `(matrix (dotom .getColumn ~matrix ~colspec))
+         (iswild colspec) `(matrix (dotom .getRow    ~matrix ~rowspec))
+         :else            `(get ~matrix ~rowspec ~colspec)))
   ([^DoubleMatrix matrix rowspec colspec values]
-     (let [m (gensym)
-           form (cond (and (iswild rowspec) (iswild colspec)) `(.copy ~m ~values)
-                      (iswild rowspec) `(dotom .putColumn ~m ~colspec ~values)
-                      (iswild colspec) `(dotom .putRow    ~m ~rowspec ~values)
-                      :else            `(set        ~m ~rowspec ~colspec ~values))]
-       `(let [~m ~matrix]
-          (do ~form ~m)))))</pre></td></tr><tr><td class="docs"><p><code>slice</code> is the primary function for accessing and modifying a
-   matrix at the single row, column, entry, or full matrix level. The
-   row/colspec variables are either an integer or the atom <code>'_</code>
-   signifying that the index should run over all possible values for
-   the row or column index. If a fourth argument is passed it is
-   assumed to be a size-conforming entry, row, or matrix to be
-   inserted into the spec'd location.</p>
+   (let [m (gensym)
+         form (cond (and (iswild rowspec) (iswild colspec)) `(.copy ~m ~values)
+                    (iswild rowspec) `(dotom .putColumn ~m ~colspec ~values)
+                    (iswild colspec) `(dotom .putRow    ~m ~rowspec ~values)
+                    :else            `(set        ~m ~rowspec ~colspec ~values))]
+     `(let [~m ~matrix]
+        (do ~form ~m)))))</pre></td></tr><tr><td class="docs"><p><code>slice</code> is the primary function for accessing and modifying a
+  matrix at the single row, column, entry, or full matrix level. The
+  row/colspec variables are either an integer or the atom <code>'_</code>
+  signifying that the index should run over all possible values for
+  the row or column index. If a fourth argument is passed it is
+  assumed to be a size-conforming entry, row, or matrix to be
+  inserted into the spec'd location.</p>
 </td><td class="codes"><pre class="brush: clojure">(defmacro slice
   [^Matrix matrix rowspec colspec &amp; values?]
   (apply slicer matrix rowspec colspec values?))</pre></td></tr><tr><td class="docs"><p><code>slices</code> provides an identical interface to <code>slice</code> except that it
@@ -3451,9 +3554,9 @@ do not propagate. If they are, however, they can be removed by
 asserting the matrix <code>arbitrary</code>.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><code>symmetric</code> asserts that a matrix is symmetric.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn symmetric
-  [^Matrix m] (with-meta m {:symmetric true}))</pre></td></tr><tr><td class="docs"><p><code>positive</code> asserts that a matrix is positive definite.</p>
+  [^Matrix m] (with-meta m {:symmetric true}))</pre></td></tr><tr><td class="docs"><p><code>positive</code> asserts that a matrix is positive definite. By definition, it is also <code>symmetric</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn positive
-  [^Matrix m] (with-meta (symmetric m) {:positive true}))</pre></td></tr><tr><td class="docs"><p><code>arbitrary</code> asserts that a matrix is just arbitrary.</p>
+  [^Matrix m] (with-meta m {:symmetric true :positive true}))</pre></td></tr><tr><td class="docs"><p><code>arbitrary</code> asserts that a matrix is just arbitrary.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn arbitrary
   [^Matrix m] (with-meta m {:symmetric false :positive false}))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn symmetric? [^Matrix m] (:symmetric (meta m)))
@@ -3476,8 +3579,8 @@ asserting the matrix <code>arbitrary</code>.</p>
             rvals (seq (.toArray (.real vals)))
             ivals (seq (.toArray (.real vals)))
             mags (clojure.core/map #(Math/sqrt
-                        (clojure.core/+ (Math/pow %1 2)
-                                        (Math/pow %2 2))) rvals ivals)]
+                                      (clojure.core/+ (Math/pow %1 2)
+                                                      (Math/pow %2 2))) rvals ivals)]
         (if (every? #(&gt; % 0) mags)
           (positive m)
           m))
@@ -3493,17 +3596,17 @@ we use the usual functor interface through <code>map-indexed</code> and
   [fun ^Matrix mat]
   (let [[n m] (size mat)]
     (from-sparse n m
-     (for [i (range n)
-           j (range m)]
-       [i j (fun i j (get mat i j))]))))</pre></td></tr><tr><td class="docs"><p><code>map</code> is a specialization of <code>map-indexed</code> where the function does
+                 (for [i (range n)
+                       j (range m)]
+                   [i j (fun i j (get mat i j))]))))</pre></td></tr><tr><td class="docs"><p><code>map</code> is a specialization of <code>map-indexed</code> where the function does
   not get passed the indices.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn map
   [fun ^Matrix mat]
   (let [[n m] (size mat)]
     (from-sparse n m
-     (for [i (range n)
-           j (range m)]
-       [i j (fun (get mat i j))]))))</pre></td></tr><tr><td class="docs"><h1>Linear algebra</h1>
+                 (for [i (range n)
+                       j (range m)]
+                   [i j (fun (get mat i j))]))))</pre></td></tr><tr><td class="docs"><h1>Linear algebra</h1>
 
 <p>Some of the most important reasons one would use matrices comes
 from the techniques of linear algebra. Considering matrices as
@@ -3519,50 +3622,67 @@ functions give access to these rich techniques.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn normalize
   [^Matrix mat &amp; [flags]]
   (if (column? mat)
-    (Matrix. (dotom Geometry/normalize mat))
-    (Matrix. (dotom Geometry/normalizeColumns mat))))</pre></td></tr><tr><td class="docs"><p><code>+</code> sums vectors and matrices (and scalars as if they were constant
+    (matrix (dotom Geometry/normalize mat))
+    (matrix (dotom Geometry/normalizeColumns mat))))</pre></td></tr><tr><td class="docs"><p><code>+</code> sums vectors and matrices (and scalars as if they were constant
   matrices). All the matrices must have the same size.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn +
   ([a b] (cond (and (matrix? a) (matrix? b))
                (if (= (size a) (size b))
-                 (Matrix. (dotom .add a ^DoubleMatrix (me b)))
+                 (matrix (dotom .add a ^DoubleMatrix (me b)))
                  (throw+ {:exception &quot;Matrices of different sizes cannot be summed.&quot;
                           :asize (size a)
                           :bsize (size b)}))
-               (matrix? a) (Matrix.
-                            (dotom .add a (double b)))
-               (matrix? b) (Matrix.
-                            (dotom .add b (double a)))
+               (matrix? a) (matrix
+                             (dotom .add a (double b)))
+               (matrix? b) (matrix
+                             (dotom .add b (double a)))
                :else       (clojure.core/+ a b)))
-  ([a b &amp; as] (reduce + a (cons b as))))</pre></td></tr><tr><td class="docs"><p><code>-</code> differences vectors and matrices (and scalars as if they were
-  constant matrices). All the matrices must have the same size.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn -
-  ([a b] (cond (and (matrix? a) (matrix? b))
-               (if (= (size a) (size b))
-                 (Matrix. (dotom .sub a ^DoubleMatrix (me b)))
-                 (throw+ {:exception &quot;Matrices of different sizes cannot be differenced.&quot;
-                          :asize (size a)
-                          :bsize (size b)}))
-               (matrix? a) (Matrix.
-                            (dotom .sub a (double b)))
-               (matrix? b) (Matrix.
-                            (dotom .rsub b (double a)))
-               :else       (clojure.core/- a b)))
-  ([a b &amp; as] (reduce - a (cons b as))))</pre></td></tr><tr><td class="docs"><p><code>*</code> computes the product of vectors and matrices (and scalars as
+  ([a b &amp; as] (reduce + a (cons b as))))</pre></td></tr><tr><td class="docs"><p><code>*</code> computes the product of vectors and matrices (and scalars as
   scaling factors). All matrices must have compatible sizes.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn *
   ([a b] (cond (and (matrix? a) (matrix? b))
                (if (= (second (size a)) (first (size b)))
-                 (Matrix. (dotom .mmul a ^DoubleMatrix (me b)))
+                 (matrix (dotom .mmul a ^DoubleMatrix (me b)))
                  (throw+ {:exception &quot;Matrix products must have compatible sizes.&quot;
+                          :a-cols (ncols a)
+                          :b-rows (nrows b)}))
+               (matrix? a) (matrix
+                             (dotom .mmul a (double b)))
+               (matrix? b) (matrix
+                             (dotom .mmul b (double a)))
+               :else       (clojure.core/* a b)))
+  ([a b &amp; as] (reduce * a (cons b as))))</pre></td></tr><tr><td class="docs"><p>Element-wise multiplication.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn mult
+  ([a b] (cond (and (matrix? a) (matrix? b))
+               (matrix (dotom .mul a ^DoubleMatrix (me b)))
+               (matrix? a) (matrix
+                             (dotom .mul a (double b)))
+               (matrix? b) (matrix
+                             (dotom .mul b (double a)))
+               :else       (clojure.core/* a b))))</pre></td></tr><tr><td class="docs"><p>Element-wise division.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn div
+  ([a b] (cond (and (matrix? a) (matrix? b))
+               (matrix (dotom .div a ^DoubleMatrix (me b)))
+               (matrix? a) (matrix
+                             (dotom .div a (double b)))
+               (matrix? b) (matrix
+                             (dotom .rdiv b (double a)))
+               :else       (clojure.core// a b))))</pre></td></tr><tr><td class="docs"><p><code>-</code> differences vectors and matrices (and scalars as if they were
+  constant matrices). All the matrices must have the same size.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn -
+  ([a] (* -1 a))
+  ([a b] (cond (and (matrix? a) (matrix? b))
+               (if (= (size a) (size b))
+                 (matrix (dotom .sub a ^DoubleMatrix (me b)))
+                 (throw+ {:exception &quot;Matrices of different sizes cannot be differenced.&quot;
                           :asize (size a)
                           :bsize (size b)}))
-               (matrix? a) (Matrix.
-                            (dotom .mmul a (double b)))
-               (matrix? b) (Matrix.
-                            (dotom .mmul b (double a)))
-               :else       (clojure.core/* a b)))
-  ([a b &amp; as] (reduce * a (cons b as))))</pre></td></tr><tr><td class="docs"><p><code>dot</code> computes the inner product between two vectors. This is
+               (matrix? a) (matrix
+                             (dotom .sub a (double b)))
+               (matrix? b) (matrix
+                             (dotom .rsub b (double a)))
+               :else       (clojure.core/- a b)))
+  ([a b &amp; as] (reduce - a (cons b as))))</pre></td></tr><tr><td class="docs"><p><code>dot</code> computes the inner product between two vectors. This is
   extended to work on matrices considered as <code>nm</code>-dimensional
   vectors.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn dot
@@ -3575,8 +3695,8 @@ matrices with particular spectra.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn rreflection
   [n]
   (let [v (Geometry/normalize (DoubleMatrix/randn n))]
-    (Matrix.
-     (.sub (DoubleMatrix/eye n) (.mmul (.mmul v (.transpose v)) (double 2))))))</pre></td></tr><tr><td class="docs"><p><code>rspectral</code> creates a random matrix with a particular spectrum, or,
+    (matrix
+      (.sub (DoubleMatrix/eye n) (.mmul (.mmul v (.transpose v)) (double 2))))))</pre></td></tr><tr><td class="docs"><p><code>rspectral</code> creates a random matrix with a particular spectrum, or,
   if only an integer <code>n</code> is passed, then it creates a random <code>n</code>x<code>n</code>
   positive definite matrix with a random spectrum. The orthogonal
   matrices are generated by using <code>2n</code> composed Householder
@@ -3593,9 +3713,9 @@ matrices with particular spectra.</p>
                       (DoubleMatrix/eye n))
              (clojure.core/* 2 n))
         L (DoubleMatrix/diag
-           (DoubleMatrix.
-            ^doubles (into-array Double/TYPE spectrum)))
-        A (Matrix. (-&gt; V (.mmul L) (.mmul (.transpose V))))]
+            (DoubleMatrix.
+              ^doubles (into-array Double/TYPE spectrum)))
+        A (matrix (-&gt; V (.mmul L) (.mmul (.transpose V))))]
     (if (every? pos? spectrum)
       (positive A)
       A)))</pre></td></tr><tr><td class="docs"><p><code>solve</code> solves the equation <code>Ax = B</code> for the column <code>Matrix</code>
@@ -3603,14 +3723,14 @@ matrices with particular spectra.</p>
   optimized LAPACK routines.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn solve
   [^Matrix A ^Matrix B]
-  (Matrix.
-   (cond
-    (positive? A)  (Solve/solvePositive ^DoubleMatrix (me A)
-                                        ^DoubleMatrix (me B))
-    (symmetric? A) (Solve/solveSymmetric ^DoubleMatrix (me A)
-                                         ^DoubleMatrix (me B))
-    :else          (Solve/solve ^DoubleMatrix (me A)
-                                ^DoubleMatrix (me B)))))</pre></td></tr><tr><td class="docs"><p><code>i</code> computes the inverse of a matrix. This is done via Gaussian
+  (matrix
+    (cond
+      (positive? A)  (Solve/solvePositive ^DoubleMatrix (me A)
+                                          ^DoubleMatrix (me B))
+      (symmetric? A) (Solve/solveSymmetric ^DoubleMatrix (me A)
+                                           ^DoubleMatrix (me B))
+      :else          (Solve/solve ^DoubleMatrix (me A)
+                                  ^DoubleMatrix (me B)))))</pre></td></tr><tr><td class="docs"><p><code>i</code> computes the inverse of a matrix. This is done via Gaussian
   elmination through the <code>solve</code> function. It can be numerically very
   unstable if the matrix is nearly singular.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn i
@@ -3630,48 +3750,56 @@ matrices with particular spectra.</p>
   imaginary values will lead to mistakes in using the matrix
   spectrum.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn eigen
-  ([^DoubleMatrix A]
-     (cond
-      (symmetric? A) (let [[vecs vals] (clojure.core/map #(Matrix. %)
-                                            (seq (dotom Eigen/symmetricEigenvectors A)))]
-                       {:vectors vecs :values (diag vals)})
-      :else          (let [[^ComplexDoubleMatrix vecs ^ComplexDoubleMatrix vals]
-                           (seq (dotom Eigen/eigenvectors A))
-                           rvecs (Matrix. (.real vecs))
-                           ivecs (Matrix. (.imag vecs))
-                           rvals (diag (Matrix. (.real vals)))
-                           ivals (diag (Matrix. (.imag vals)))
-                           out {:vectors rvecs
-                                :values  rvals}]
-                       (if (some (partial not= 0.0) ivals)
-                         (merge out
-                                {:ivectors ivecs
-                                 :ivalues  ivals})
-                         out))))
-  ([^DoubleMatrix A ^DoubleMatrix B]
-     (let [A (maybe-symmetric A)
-           B (maybe-symmetric B)]
-       (if (and (symmetric? A) (symmetric? B))
-         (let [[vecs vals]
-               (clojure.core/map #(Matrix. %)
-                    (seq (Eigen/symmetricGeneralizedEigenvectors ^DoubleMatrix (me A)
-                                                                 ^DoubleMatrix (me B))))]
-           {:vectors vecs :values (as-vec vals)})
-         (throw+ {:error &quot;Cannot do generalized eigensystem for non-symmetric matrices.&quot;})))))</pre></td></tr><tr><td class="docs"><p><code>(svd A)</code> computes the sparse singular value decomposition of <code>A</code>
+  ([^Matrix A]
+   (cond
+     (symmetric? A) (let [[vecs vals] (clojure.core/map #(matrix %)
+                                                        (seq (dotom Eigen/symmetricEigenvectors A)))]
+                      {:vectors vecs :values (diag vals)})
+     :else          (let [[^ComplexDoubleMatrix vecs ^ComplexDoubleMatrix vals]
+                          (seq (dotom Eigen/eigenvectors A))
+                          rvecs (matrix (.real vecs))
+                          ivecs (matrix (.imag vecs))
+                          rvals (diag (matrix (.real vals)))
+                          ivals (diag (matrix (.imag vals)))
+                          out {:vectors rvecs
+                               :values  rvals}]
+                      (if (some (partial not= 0.0) ivals)
+                        (merge out
+                               {:ivectors ivecs
+                                :ivalues  ivals})
+                        out))))
+  ([^Matrix A ^Matrix B]
+   (let [A (maybe-symmetric A)
+         B (maybe-symmetric B)]
+     (if (and (symmetric? A) (symmetric? B))
+       (let [[vecs vals]
+             (clojure.core/map #(matrix %)
+                               (seq (Eigen/symmetricGeneralizedEigenvectors ^DoubleMatrix (me A)
+                                                                            ^DoubleMatrix (me B))))]
+         {:vectors vecs :values (as-vec vals)})
+       (throw+ {:error &quot;Cannot do generalized eigensystem for non-symmetric matrices.&quot;})))))</pre></td></tr><tr><td class="docs"><p><code>(svd A)</code> computes the sparse singular value decomposition of <code>A</code>
   returning a map with keys <code>{:values L :left U :right V}</code> such that
   <code>A = U (diag L) V</code>. If <code>(size A)</code> is <code>[n m]</code> and the rank of <code>A</code> is
   <code>k</code>, we have the size of <code>U</code> as <code>[n k]</code>, <code>(diag L)</code> as <code>[k k]</code>,
   and <code>(t V)</code> as <code>[k m]</code>.</p>
+
+<p>  Optional key:
+  <code>:type</code> --  <code>:full</code> for the full SVD
+              <code>:value</code> for SVD values only</p>
 </td><td class="codes"><pre class="brush: clojure">(defn svd
-  [^Matrix A]
-  (let [[U L V] (dotom Singular/sparseSVD A)
-        left (Matrix. U)
-        right (Matrix. V)
+  [^Matrix A &amp; {:keys [type] :or {type :sparse}}]
+  (let [[U L V] (if (= type :full)
+                  (dotom Singular/fullSVD A)
+                  (dotom Singular/sparseSVD A))
+        left (matrix U)
+        right (matrix V)
         values (seq (.toArray L))]
-    {:left left
-     :right right
-     :values values
-     :rank (count values)}))</pre></td></tr><tr><td class="docs"><p><code>(rank A)</code> is the rank of matrix <code>A</code> as computed by <code>svd</code>.</p>
+    (if (= type :values)
+      {:values (seq (.toArray (dotom Singular/SVDValues A)))}
+      {:left left
+       :right right
+       :values values
+       :rank (count values)})))</pre></td></tr><tr><td class="docs"><p><code>(rank A)</code> is the rank of matrix <code>A</code> as computed by <code>svd</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn rank
   [^Matrix A] (:rank (svd A)))</pre></td></tr><tr><td class="docs"><p><code>complex-power</code> computes <code>z^e</code> for some complex number <code>z</code> and
   double exponent <code>e</code>.</p>
@@ -3702,17 +3830,17 @@ matrices with particular spectra.</p>
         (.put L i i (nth new-spect i)))
       ;; Compute the product
       (-&gt; V
-          (.mmul L)
-          (.mmul (.transpose V))
-          .real
-          Matrix.))))</pre></td></tr><tr><td class="docs"><p><code>(cholesky A)</code> is the Cholesky square root of a matrix, <code>U</code> such
+        (.mmul L)
+        (.mmul (.transpose V))
+        .real
+        (matrix)))))</pre></td></tr><tr><td class="docs"><p><code>(cholesky A)</code> is the Cholesky square root of a matrix, <code>U</code> such
   that <code>U' U = A</code>. Note that <code>A</code> must be positive (semi) definite for
   this to exist, but <code>cholesky</code> requires strict positivity.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn cholesky
   [^Matrix mat]
   (let [mat (maybe-positive mat)]
     (if (positive? mat)
-      (Matrix. (dotom Decompose/cholesky mat))
+      (matrix (dotom Decompose/cholesky mat))
       (throw+ {:exception &quot;Cholesky decompositions require positivity.&quot;}))))</pre></td></tr><tr><td class="docs"><p><code>(lu A)</code> computes the LU decomposition of <code>A</code>, returning `{:p P :l L :u
   U}<code>such that</code>A = PLU`.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn lu
@@ -3721,9 +3849,9 @@ matrices with particular spectra.</p>
     (throw+ {:exception &quot;Cannot compute LU decomposition of a non-square matrix.&quot;
              :size (size mat)})
     (let [lu (dotom Decompose/lu mat)]
-      {:p (Matrix. ^DoubleMatrix (.p lu))
-       :l (Matrix. ^DoubleMatrix (.l lu))
-       :u (Matrix. ^DoubleMatrix (.u lu))})))</pre></td></tr><tr><td class="docs"><h1>Printing the matrices</h1>
+      {:p (matrix ^DoubleMatrix (.p lu))
+       :l (matrix ^DoubleMatrix (.l lu))
+       :u (matrix ^DoubleMatrix (.u lu))})))</pre></td></tr><tr><td class="docs"><h1>Printing the matrices</h1>
 
 <p>When normally working with matrices in a REPL, it's huge mistake
 to accidentally print a large matrix to the terminal. Usually,
@@ -3735,71 +3863,110 @@ examination.</p>
 readable lisp form for <code>A</code> by using dense seq-of-seq
 semantics. Below we demonstrate non-readable printing methods for
 <code>Matrix</code> which show only its size (<code>print-method</code>, used by the
-REPL) and, for more detail, a limited subset of its elements
-(<code>pp</code>).</p>
+REPL).</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>(This function is pretty ugly...)</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmethod print-method Matrix [mat ^Writer w]
-  (.write w &quot;#&lt;Matrix &quot;)
-  (.write w (str (size mat)))
-  (.write w &quot;&gt;&quot;))</pre></td></tr><tr><td class="docs"><p>(This function is pretty ugly...)</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><p><code>pp</code> pretty prints <code>Matrix</code> objects. The second and third optional
-   arguments are for large, precise matrices, specifying the amount of
-   elements to show and their precision respectively. By default, at
-   most 3 rows and columns at the beginning and end of the matrix are
-   printed with elements having 3 significant figures.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn pp
-  ([^Matrix mat] (pp mat 3 2))
-  ([^Matrix mat prec] (pp mat 3 prec))
-  ([^Matrix mat nbits prec]
-     (let [[n m] (size mat)
-           small-rows (&lt; n (* nbits 2))
-           small-cols (&lt; m (clojure.core/* nbits 2))
-           rowset (if (&lt; n (clojure.core/* nbits 2))
-                    (range n)
-                    (concat (range nbits) (range (clojure.core/- n nbits) n)))
-           colset (if (&lt; m (clojure.core/* nbits 2))
-                    (range m)
-                    (concat (range nbits) (range (clojure.core/- m nbits) m)))
-           submat (apply hstack (cols (apply vstack (rows mat rowset)) colset))
-           [n m] (size submat)
-           fmt (str &quot;% .&quot; prec &quot;e &quot;)
-           header (apply format &quot; A %dx%d matrix&quot; (size mat))]
-       ;; Print the header
-       (println header)
-       (print &quot; &quot;)
-       (doseq [i (range (dec (count header)))] (print &quot;-&quot;))
-       (print &quot;\n&quot;)
-       ;; Print the matrix
-       (if small-rows
-         (doseq [i (range n)]
-           (if small-cols
-             (doseq [j (range m)]
-               (print (format fmt (slice submat i j))))
-             (do (doseq [j (range nbits)]
-                   (print (format fmt (slice submat i j))))
-                 (print &quot; . &quot;)
-                 (doseq [j (range nbits (clojure.core/* 2 nbits))]
-                   (print (format fmt (slice submat i j))))))
-           (print &quot;\n&quot;))
-         (do (doseq [i (range nbits)]
-               (if small-cols
-                 (doseq [j (range m)]
-                   (print (format fmt (slice submat i j))))
-                 (do (doseq [j (range nbits)]
-                       (print (format fmt (slice submat i j))))
-                     (print &quot; . &quot;)
-                     (doseq [j (range nbits (clojure.core/* 2 nbits))]
-                       (print (format fmt (slice submat i j))))))
-               (print &quot;\n&quot;))
-             (println &quot; ... &quot;)
-             (doseq [i (range nbits (clojure.core/* 2 nbits))]
-               (if small-cols
-                 (doseq [j (range m)]
-                   (print (format fmt (slice submat i j))))
-                 (do (doseq [j (range nbits)]
-                       (print (format fmt (slice submat i j))))
-                     (print &quot; . &quot;)
-                     (doseq [j (range nbits (clojure.core/* 2 nbits))]
-                       (print (format fmt (slice submat i j))))))
-               (print &quot;\n&quot;)))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+</td><td class="codes"><pre class="brush: clojure">(defmethod print-method Matrix [mat ^java.io.Writer w]
+  (let [[nbits prec] [3 2]
+        [n m] (size mat)
+        small-rows (&lt; n (* nbits 2))
+        small-cols (&lt; m (clojure.core/* nbits 2))
+        rowset (if (&lt; n (clojure.core/* nbits 2))
+                 (range n)
+                 (concat (range nbits) (range (clojure.core/- n nbits) n)))
+        colset (if (&lt; m (clojure.core/* nbits 2))
+                 (range m)
+                 (concat (range nbits) (range (clojure.core/- m nbits) m)))
+        submat (apply hstack (cols (apply vstack (rows mat rowset)) colset))
+        [n m] (size submat)
+        fmt (str &quot;% .&quot; prec &quot;e &quot;)
+        header (apply format &quot; A %dx%d matrix\n&quot; (size mat))]
+    ;; Print the header
+    (.write w header)
+    (.write w &quot; &quot;)
+    (doseq [i (range (dec (count header)))] (.write w &quot;-&quot;))
+    (.write w &quot;\n&quot;)
+    ;; Print the matrix
+    (if small-rows
+      (doseq [i (range n)]
+        (if small-cols
+          (doseq [j (range m)]
+            (.write w (format fmt (slice submat i j))))
+          (do (doseq [j (range nbits)]
+                (print (format fmt (slice submat i j))))
+            (.write w &quot; . &quot;)
+            (doseq [j (range nbits (clojure.core/* 2 nbits))]
+              (.write w (format fmt (slice submat i j))))))
+        (.write w &quot;\n&quot;))
+      (do (doseq [i (range nbits)]
+            (if small-cols
+              (doseq [j (range m)]
+                (.write w (format fmt (slice submat i j))))
+              (do (doseq [j (range nbits)]
+                    (.write w (format fmt (slice submat i j))))
+                (.write w &quot; . &quot;)
+                (doseq [j (range nbits (clojure.core/* 2 nbits))]
+                  (.write w (format fmt (slice submat i j))))))
+            (.write w &quot;\n&quot;))
+        (.write w &quot; ... \n&quot;)
+        (doseq [i (range nbits (clojure.core/* 2 nbits))]
+          (if small-cols
+            (doseq [j (range m)]
+              (.write w (format fmt (slice submat i j))))
+            (do (doseq [j (range nbits)]
+                  (.write w (format fmt (slice submat i j))))
+              (.write w &quot; . &quot;)
+              (doseq [j (range nbits (clojure.core/* 2 nbits))]
+                (.write w (format fmt (slice submat i j))))))
+          (.write w &quot;\n&quot;))))))</pre></td></tr><tr><td class="docs"><p> JBLAS provides several fast and useful mathematical functions,
+ mirroring Java's Math namespace, applied
+ elementwise to the Matrix.  Here we import them.
+ They are provided in a funcional form
+ as well as a mutating form, the latter have i (for in-place)
+ appended to their names.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Helper macro</p>
+</td><td class="codes"><pre class="brush: clojure">(defmacro promote-mffun* [defname name fname]
+  (let [m (gensym)]
+    `(~defname ~name ^Matrix [^Matrix ~m] (matrix (dotom ~fname ~m)))))</pre></td></tr><tr><td class="docs"><p>These are the functional style matrix functions.  They accept a
+matrix and return a new matrix with the function applied element-wise.</p>
+</td><td class="codes"><pre class="brush: clojure">(promote-mffun* defn exp    MatrixFunctions/exp)
+(promote-mffun* defn abs    MatrixFunctions/abs)
+(promote-mffun* defn acos   MatrixFunctions/acos)
+(promote-mffun* defn asin   MatrixFunctions/asin)
+(promote-mffun* defn atan   MatrixFunctions/atan)
+(promote-mffun* defn cbrt   MatrixFunctions/cbrt)
+(promote-mffun* defn ceil   MatrixFunctions/ceil)
+(promote-mffun* defn cos    MatrixFunctions/cos)
+(promote-mffun* defn cosh   MatrixFunctions/cosh)
+(promote-mffun* defn exp    MatrixFunctions/exp)
+(promote-mffun* defn floor  MatrixFunctions/floor)
+(promote-mffun* defn log    MatrixFunctions/log)
+(promote-mffun* defn log10  MatrixFunctions/log10)
+(promote-mffun* defn signum MatrixFunctions/signum)
+(promote-mffun* defn sin    MatrixFunctions/sin)
+(promote-mffun* defn sinh   MatrixFunctions/sinh)
+(promote-mffun* defn sqrt   MatrixFunctions/sqrt)
+(promote-mffun* defn tan    MatrixFunctions/tan)
+(promote-mffun* defn tanh   MatrixFunctions/tanh)</pre></td></tr><tr><td class="docs"><p>These are the inplace functions.  They mutate the passed
+in matrix with the function.  They are faster</p>
+</td><td class="codes"><pre class="brush: clojure">(promote-mffun* defn exp!    MatrixFunctions/expi)
+(promote-mffun* defn abs!    MatrixFunctions/absi)
+(promote-mffun* defn acos!   MatrixFunctions/acosi)
+(promote-mffun* defn asin!   MatrixFunctions/asini)
+(promote-mffun* defn atan!   MatrixFunctions/atani)
+(promote-mffun* defn cbrt!   MatrixFunctions/cbrti)
+(promote-mffun* defn ceil!   MatrixFunctions/ceili)
+(promote-mffun* defn cos!    MatrixFunctions/cosi)
+(promote-mffun* defn cosh!   MatrixFunctions/coshi)
+(promote-mffun* defn exp!    MatrixFunctions/expi)
+(promote-mffun* defn floor!  MatrixFunctions/floori)
+(promote-mffun* defn log!    MatrixFunctions/logi)
+(promote-mffun* defn log10!  MatrixFunctions/log10i)
+(promote-mffun* defn signum! MatrixFunctions/signumi)
+(promote-mffun* defn sin!    MatrixFunctions/sini)
+(promote-mffun* defn sinh!   MatrixFunctions/sinhi)
+(promote-mffun* defn sqrt!   MatrixFunctions/sqrti)
+(promote-mffun* defn tan!    MatrixFunctions/tani)
+(promote-mffun* defn tanh!   MatrixFunctions/tanhi)</pre></td></tr><tr><td class="docs"><p>TODO: pow is more complex and not currenty supported</p>
+</td><td class="codes"></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
        SyntaxHighlighter.all()</script></body></html>
