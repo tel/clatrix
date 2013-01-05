@@ -763,6 +763,38 @@ Uses the same algorithm as java's default Random constructor."
                :else       (clojure.core/- a b)))
   ([a b & as] (reduce - a (cons b as))))
 
+(defn div
+  "`/` element-wise divides vectors and matrices (and scalars as if they were constant matrices). All the matrices must have the same size."
+  ([a] (* -1 a))
+  ([a b] (cond (and (matrix? a) (matrix? b))
+               (if (= (size a) (size b))
+                 (Matrix. (dotom .div a ^DoubleMatrix (me b)))
+                 (throw+ {:exception "Matrices of different sizes cannot be differenced."
+                          :asize (size a)
+                          :bsize (size b)}))
+               (matrix? a) (Matrix.
+                            (dotom .div a (double b)))
+               (matrix? b) (Matrix.
+                            (dotom .rdiv b (double a)))
+               :else       (clojure.core/- a b)))
+  ([a b & as] (reduce - a (cons b as))))
+
+(defn mul
+  "`/` element-wise multiplies vectors and matrices (and scalars as if they were constant matrices). All the matrices must have the same size."
+  ([a] (* -1 a))
+  ([a b] (cond (and (matrix? a) (matrix? b))
+               (if (= (size a) (size b))
+                 (Matrix. (dotom .mul a ^DoubleMatrix (me b)))
+                 (throw+ {:exception "Matrices of different sizes cannot be differenced."
+                          :asize (size a)
+                          :bsize (size b)}))
+               (matrix? a) (Matrix.
+                            (dotom .mul a (double b)))
+               (matrix? b) (Matrix.
+                            (dotom .mul b (double a)))
+               :else       (clojure.core/- a b)))
+  ([a b & as] (reduce - a (cons b as))))
+
 (defn dot
   "`dot` computes the inner product between two vectors. This is
   extended to work on matrices considered as `nm`-dimensional
