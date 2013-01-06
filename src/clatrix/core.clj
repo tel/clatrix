@@ -247,8 +247,8 @@
    (matrix (doto (DoubleMatrix/ones n m)
              (.muli c)))))
 
-(defn id
-  "`(id n)` is the `n`x`n` identity matrix."
+(defn eye
+  "`(eye n)` is the `n`x`n` identity matrix."
   [^long n] (matrix (DoubleMatrix/eye n)))
 
 ;;; ## Reshaping
@@ -844,7 +844,7 @@ Uses the same algorithm as java's default Random constructor."
   (if (not (square? mat))
     (throw+ {:exception "Cannot invert a non-square matrix."})
     (let [[n _] (size mat)]
-      (solve mat (id n)))))
+      (solve mat (eye n)))))
 
 (defn eigen
   "`eigen` computes the eigensystem (or generalized eigensystem) for a

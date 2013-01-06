@@ -145,13 +145,13 @@
 
 (expect 7.0 (nth C 7))
 (expect (c/matrix [(range (* m 4) (* m (inc 4)))]) (nth F 4))
-(expect [(c/matrix [4 19 34 49 64 79 94 109 124 139]) 
+(expect [(c/matrix [4 19 34 49 64 79 94 109 124 139])
          (c/matrix [7 22 37 52 67 82 97 112 127 142])
          (c/matrix [6 21 36 51 66 81 96 111 126 141])]
         (c/cols F [4 7 6]))
 
 ;; properties of id
-(given (c/id n)
+(given (c/eye n)
        (expect c/size [n n]
                c/trace (double n)))
 
@@ -188,11 +188,11 @@
 (expect (double 0) (reduce + (map (partial reduce +)
                                   (c/dense (c/zeros n m)))))
 
-(expect (double n) (reduce + (map (partial reduce +) (c/dense (c/id n)))))
+(expect (double n) (reduce + (map (partial reduce +) (c/dense (c/eye n)))))
 (expect (double (* n 5)) (reduce + (map (partial reduce +)
-                                        (c/dense (c/* 5 (c/id n))))))
+                                        (c/dense (c/* 5 (c/eye n))))))
 (expect (double (* n 5)) (reduce + (map (partial reduce +)
-                                        (c/dense (c/map (partial * 5) (c/id n))))))
+                                        (c/dense (c/map (partial * 5) (c/eye n))))))
 
 ;; norm and normalize
 (expect (double m)
@@ -207,8 +207,8 @@
                      :c (reverse cidx)))
 
 ;; block matrices
-(expect (c/id 30)
-        (let [I (c/id 10)]
+(expect (c/eye 30)
+        (let [I (c/eye 10)]
           (c/block [[I . .]
                     [_ I _]
                     [* * I]])))
@@ -224,9 +224,9 @@
 (expect A (c/- (c/+ A A) A))
 (expect [m m] (c/size (c/* (c/t A) A)))
 (expect [n n] (c/size (c/* A (c/t A))))
-(expect A (c/* (c/id n) A))
-(expect A (c/* A (c/id m)))
-(expect A (c/* (c/id n) A (c/id m)))
+(expect A (c/* (c/eye n) A))
+(expect A (c/* A (c/eye m)))
+(expect A (c/* (c/eye n) A (c/eye m)))
 
 (expect (c/constant n m 0) (c/+ A (c/- A)))
 
@@ -311,10 +311,10 @@
       P (c/rspectral n)
       G (c/cholesky P)
       I (c/rspectral (repeat n (double 1)))]
-  (expect (c/id n) (c/* H (c/t H)))
+  (expect (c/eye n) (c/* H (c/t H)))
   (expect (partial every? pos?) (:values (c/eigen P)))
   (expect P (c/* (c/t G) G))
-  (expect (c/id n) I))
+  (expect (c/eye n) I))
 
 ;; Matrix Functions
 (let [v (c/column (range 9))]
