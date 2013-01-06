@@ -194,19 +194,22 @@
 
 (derive java.util.Collection ::collection)
 (derive DoubleMatrix ::double-matrix)
+(derive Matrix ::matrix)
+
 (defmulti matrix
   "`matrix` creates a `Matrix` from a seq of seqs, specifying the
   matrix in row-major order. The length of each seq must be
   identical or an error is throw."
   (fn [m & args] (class m)))
 
+(defmethod matrix ::matrix
+  ([^Matrix m & _] m))
+
 (defmethod matrix ::double-matrix
   ([^DoubleMatrix x]
    (matrix x (.isVector x) nil))
   ([^DoubleMatrix x vector? meta]
    (Matrix. x vector? meta)))
-
-;; TODO matrix ::matrix
 
 (defmethod matrix ::collection
   [seq-of-seqs]

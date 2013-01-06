@@ -106,6 +106,9 @@
   (c/set A 0 0 z)
   (expect z (c/get A 0 0)))
 
+;; Check idempotence of matrix constructor
+(expect A (c/matrix (c/matrix A) :unused-arg :another-unused-arg))
+
 (expect 3.0 (c/get F 0 3))
 (expect (c/matrix [[17 18]]) (c/get F 1 [2 3]))
 (expect (c/matrix [[2] [17] [32]]) (c/get F [0 1 2] 2))
