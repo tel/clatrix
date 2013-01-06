@@ -1,6 +1,6 @@
 (defproject clatrix/clatrix "0.2.0-SNAPSHOT"
-  :description "Because using matrices in Clojure needs to not suck."
-  :url "http://quantisan.github.com/clatrix"
+  :description "Because using ma1trices in Clojure needs to not suck."
+  :url "http://tel.github.com/clatrix"
   :license {:name "MIT License"
             :url "http://www.opensource.org/licenses/MIT"}
   :resource-paths ["native"]
@@ -10,4 +10,5 @@
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [slingshot "0.8.0"]
                  [org.jblas/jblas "1.2.2"]]
-  :profiles {:dev {:dependencies [[expectations "1.4.16"]]}})
+  :profiles {:dev {:dependencies [[expectations "1.4.16"]]}}
+)
