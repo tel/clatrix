@@ -14,4 +14,6 @@
   (is (= 2 (dimensionality M)))
   (is (= 1 (dimensionality V)))
   (is (false? (is-scalar? M)))
-  (is (true? (is-scalar? X)))) 
+  (is (true? (is-scalar? X)))
+  (is (false? (is-vector? M)))
+  (is (true? (is-vector? V)))) 

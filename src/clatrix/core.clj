@@ -1061,7 +1061,8 @@ Uses the same algorithm as java's default Random constructor."
   (dimensionality [m] (cond (some zero? (size m)) 0
                             (vector? m) 1
                             :else 2))
-  (is-scalar? [m] (= [1 1] (size m))))
+  (is-scalar? [m] (= [1 1] (size m)))
+  (is-vector? [m] (vector? m)))
 
 
 ;;;  # Native math operators
