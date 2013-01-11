@@ -1059,15 +1059,19 @@ Uses the same algorithm as java's default Random constructor."
   (implementation-key [m] :clatrix)
   mp/PDimensionInfo
   (dimensionality [m] (cond (some zero? (size m)) 0
-                            (vector? m) 1
-                            :else 2))
+                            (vector? m)           1
+                            :else                 2))
   (is-scalar? [m] (= [1 1] (size m)))
   (is-vector? [m] (vector? m))
   (dimension-count [m dimension-number] (let [[r c] (size m)]
                                           (condp = dimension-number
                                             1 r
                                             2 c
-                                            nil))))
+                                            nil)))
+  mp/PIndexedAccess
+  (get-1d [m row] (get m row (range (ncols m))))
+  (get-2d [m row column] (get m row column))
+  (get-nd [m indexes] (throw (IllegalArgumentException. "Clatrix only support 1-d or 2-d"))))
 
 
 ;;;  # Native math operators
