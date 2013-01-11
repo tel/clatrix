@@ -1060,7 +1060,8 @@ Uses the same algorithm as java's default Random constructor."
   mp/PDimensionInfo
   (dimensionality [m] (cond (some zero? (size m)) 0
                             (vector? m) 1
-                            :else 2)))
+                            :else 2))
+  (is-scalar? [m] (= [1 1] (size m))))
 
 
 ;;;  # Native math operators
