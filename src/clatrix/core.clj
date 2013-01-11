@@ -1,6 +1,7 @@
 (ns clatrix.core
   (:refer-clojure :exclude [get set map-indexed map rand vector? + - * pp])
   (:use [slingshot.slingshot :only [throw+]])
+  (:require [core.matrix.protocols :as mp])
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
             Decompose Decompose$LUDecomposition Eigen Solve Geometry
             Singular MatrixFunctions]
@@ -993,7 +994,7 @@ Uses the same algorithm as java's default Random constructor."
 ;;; `Matrix` which show only its size (`print-method`, used by the
 ;;; REPL).
 
-;;; (This function is pretty ugly...)
+;;; TODO (This function is pretty ugly...)
 
 (defmethod print-method Matrix [mat ^java.io.Writer w]
   (let [[nbits prec] [3 2]
@@ -1049,6 +1050,17 @@ Uses the same algorithm as java's default Random constructor."
                 (.write w (format fmt (slice submat i j))))))
           (.write w "\n"))))))
 
+;;; # matrix-api
+;;;
+;;; Extend Matrix type to implement matrix-api protocols
+
+(extend-type Matrix
+  mp/PImplementation
+  (implementation-key [m] :clatrix))
+
+
+;;;  # Native math operators
+;;;
 ;;;  JBLAS provides several fast and useful mathematical functions,
 ;;;  mirroring Java's Math namespace, applied
 ;;;  elementwise to the Matrix.  Here we import them.
