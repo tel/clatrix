@@ -1062,7 +1062,12 @@ Uses the same algorithm as java's default Random constructor."
                             (vector? m) 1
                             :else 2))
   (is-scalar? [m] (= [1 1] (size m)))
-  (is-vector? [m] (vector? m)))
+  (is-vector? [m] (vector? m))
+  (dimension-count [m dimension-number] (let [[r c] (size m)]
+                                          (condp = dimension-number
+                                            1 r
+                                            2 c
+                                            nil))))
 
 
 ;;;  # Native math operators
