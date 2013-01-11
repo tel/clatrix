@@ -1069,9 +1069,13 @@ Uses the same algorithm as java's default Random constructor."
                                             2 c
                                             nil)))
   mp/PIndexedAccess
-  (get-1d [m row] (get m row (range (ncols m))))
+  (get-1d [m row] (throw (UnsupportedOperationException.  "Clatrix only support 2-d")))
   (get-2d [m row column] (get m row column))
-  (get-nd [m indexes] (throw (IllegalArgumentException. "Clatrix only support 1-d or 2-d"))))
+  (get-nd [m indexes] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+  mp/PIndexedSetting
+  (set-1d [m row v] (throw (UnsupportedOperationException.  "Clatrix only support 2-d")))
+  (set-2d [m row column v] (set m row column v))
+  (set-nd [m indexes v] (throw (UnsupportedOperationException. "Clatrix only support 2-d"))))
 
 
 ;;;  # Native math operators
