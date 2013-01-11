@@ -1056,7 +1056,11 @@ Uses the same algorithm as java's default Random constructor."
 
 (extend-type Matrix
   mp/PImplementation
-  (implementation-key [m] :clatrix))
+  (implementation-key [m] :clatrix)
+  mp/PDimensionInfo
+  (dimensionality [m] (cond (some zero? (size m)) 0
+                            (vector? m) 1
+                            :else 2)))
 
 
 ;;;  # Native math operators
