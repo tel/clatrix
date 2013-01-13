@@ -21,7 +21,9 @@
   (is (= 3 (dimension-count M 2)))) 
 
 (deftest indexed-access-test
-  (is (thrown? UnsupportedOperationException (get-1d M 1)))
+  (is (thrown? IllegalArgumentException (get-1d M 1)))
+  (is (= 4.0 (get-1d V 3)))
+  (is (= 4.0 (get-1d (c/t V) 3)))
   (is (= 6.0 (get-2d M 1 2)))
   (is (thrown? UnsupportedOperationException (get-nd M [1 2 3]))))
 
