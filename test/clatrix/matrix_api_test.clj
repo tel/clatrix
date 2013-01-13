@@ -28,6 +28,8 @@
   (is (thrown? UnsupportedOperationException (get-nd M [1 2 3]))))
 
 (deftest indexed-setting-test
-  (is (thrown? UnsupportedOperationException (set-1d M 2 9.0)))
-  (is (= (c/matrix [[1 2 9 4 5]]) (set-2d V 0 2 9.0)))
+  (is (thrown? IllegalArgumentException (set-1d M 2 9.0)))
+  (is (= (c/matrix [[1 2 9 4 5]]) (set-1d V 2 9.0)))
+  (is (= (c/matrix [1 2 9 4 5]) (set-1d (c/t V) 2 9.0)))
+  (is (= (c/set M 0 2 9.0) (set-2d M 0 2 9.0)))
   (is (thrown? UnsupportedOperationException (set-nd M [1 2 3] 9.0))))

@@ -1072,13 +1072,16 @@ Uses the same algorithm as java's default Random constructor."
   (get-1d [m i] (cond
                   (and (vector? m) (row? m)) (get m 0 i) 
                   (and (vector? m) (column? m)) (get m i 0)
-                  :else (throw (IllegalArgumentException.  "'m' is not a vector"))))
+                  :else (throw (IllegalArgumentException.  "Not a vector"))))
   (get-2d [m row column] (get m row column))
   (get-nd [m indexes] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
   mp/PIndexedSetting
-  (set-1d [m row v] (throw (UnsupportedOperationException.  "Clatrix only support 2-d")))
-  (set-2d [m row column v] (set m row column v))
-  (set-nd [m indexes v] (throw (UnsupportedOperationException. "Clatrix only support 2-d"))))
+  (set-1d [m i x] (cond
+                      (and (vector? m) (row? m)) (set m 0 i x)
+                      (and (vector? m) (column? m)) (set m i 0 x)
+                      :else (throw (IllegalArgumentException.  "Not a vector"))))
+  (set-2d [m row column x] (set m row column x))
+  (set-nd [m indexes x] (throw (UnsupportedOperationException. "Clatrix only support 2-d"))))
 
 
 ;;;  # Native math operators
