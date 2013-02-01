@@ -1,7 +1,8 @@
 (ns clatrix.core
   (:refer-clojure :exclude [get set map-indexed map rand vector? + - * pp])
   (:use [slingshot.slingshot :only [throw+]])
-  (:require [core.matrix.protocols :as mp])
+  (:require [core.matrix.protocols :as mp]
+            [core.matrix.implementations :as imp])
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
             Decompose Decompose$LUDecomposition Eigen Solve Geometry
             Singular MatrixFunctions]
@@ -241,6 +242,7 @@
 
 (promote-cfun* defn  ones DoubleMatrix/ones) ;; TODO wrap inside matrix
 (promote-cfun* defn zeros DoubleMatrix/zeros)
+
 (defn constant
   "`constant` creates a column or matrix with every element equal to
   the same constant value."
@@ -689,6 +691,12 @@ Uses the same algorithm as java's default Random constructor."
                        j (range m)]
                    [i j (fun (get mat i j))]))))
 
+(defn ereduce
+  "Quick and dirty reduce."
+  [fun ^Matrix mat]
+  (reduce fun (flatten mat)))
+
+
 ;;; # Linear algebra
 ;;;
 ;;; Some of the most important reasons one would use matrices comes
@@ -1056,33 +1064,85 @@ Uses the same algorithm as java's default Random constructor."
 
 (extend-type Matrix
   mp/PImplementation
-  (implementation-key [m] :clatrix)
+  (implementation-key [m]
+    :clatrix)
+  (construct-matrix   [m data]
+    (matrix data))
+  (new-vector         [m length]
+    (zeros length))
+  (new-matrix         [m rows columns]
+    (zeros rows columns))
+  (new-matrix-nd      [m shape]
+    (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+  (supports-dimensionality? [m dimensions]
+    (<= dimensions 2))
+
   mp/PDimensionInfo
   (dimensionality [m] (cond (some zero? (size m)) 0
-                            (vector? m)           1
+                            (vector? m)           2
                             :else                 2))
+  (get-shape  [m] (filter (partial < 1) (size m)))
   (is-scalar? [m] (= [1 1] (size m)))
-  (is-vector? [m] (vector? m))
+  (is-vector? [m] false #_(vector? m))
   (dimension-count [m dimension-number] (let [[r c] (size m)]
                                           (condp = dimension-number
-                                            1 r
-                                            2 c
+                                            0 r
+                                            1 c
                                             nil)))
   mp/PIndexedAccess
   (get-1d [m i] (cond
-                  (and (vector? m) (row? m)) (get m 0 i) 
+                  (and (vector? m) (row? m)) (get m 0 i)
                   (and (vector? m) (column? m)) (get m i 0)
                   :else (throw (IllegalArgumentException.  "Not a vector"))))
   (get-2d [m row column] (get m row column))
   (get-nd [m indexes] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+
   mp/PIndexedSetting
   (set-1d [m i x] (cond
                       (and (vector? m) (row? m)) (set m 0 i x)
                       (and (vector? m) (column? m)) (set m i 0 x)
                       :else (throw (IllegalArgumentException.  "Not a vector"))))
   (set-2d [m row column x] (set m row column x))
-  (set-nd [m indexes x] (throw (UnsupportedOperationException. "Clatrix only support 2-d"))))
+  (set-nd [m indexes x] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+  (is-mutable? [m] false)
 
+  mp/PMatrixCloning
+  (clone [m] (matrix m))
+
+  mp/PMatrixSlices
+  (get-row [m i]
+    (slice m i _))
+  (get-column [m i]
+    (slice m _ i))
+  (get-major-slice [m i]
+    (slice m i _))
+  (get-slice [m dimension i]
+    (condp = dimension
+      0 (slice m i _)
+      1 (slice m _ i))
+    (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+
+  mp/PConversion
+  (convert-to-nested-vectors [m]
+    (as-vec m))
+
+  mp/PFunctionalOperations
+  (element-seq [m]
+    (flatten m))
+  (element-map [m f]
+    (map f m))
+  (element-reduce [m f]
+    (ereduce f m))
+
+  mp/PMatrixMultiply
+  (matrix-multiply [m a]
+    (* (matrix m) (matrix a)))
+  (element-multiply [m a]
+    (mult (matrix m) a))
+  )
+
+;;; Register the implementation with core.matrix
+(imp/register-implementation (zeros 2 2))
 
 ;;;  # Native math operators
 ;;;
