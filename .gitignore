@@ -11,3 +11,4 @@ pom.xml
 *.swp
 /native
 /docs
+/.project
