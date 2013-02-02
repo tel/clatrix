@@ -12,3 +12,4 @@ pom.xml
 /native
 /docs
 /.project
+/.classpath
