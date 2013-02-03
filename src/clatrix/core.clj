@@ -1,5 +1,5 @@
 (ns clatrix.core
-  (:refer-clojure :exclude [get set map-indexed map rand vector? + - * pp])
+  (:refer-clojure :exclude [get set map-indexed map rand vector? + - * pp vector])
   (:use [slingshot.slingshot :only [throw+]])
   (:require [core.matrix.protocols :as mp]
             [core.matrix.implementations :as imp])
@@ -25,7 +25,7 @@
 ;;; and to hide the underlying Java methods. It is not hard to access these
 ;;; Java methods (they're available through the `me` function), but their use is dissuaded.
 
-(declare get permute size matrix matrix? row? nrows ncols vstack)
+(declare get permute size matrix matrix? row? nrows ncols vstack vector)
 
 (deftype Matrix [^DoubleMatrix me ^Boolean vector? ^clojure.lang.IPersistentMap metadata]
   Object
@@ -57,7 +57,7 @@
         (and vector? (or (= r 1) (= c 1))) (get this 0 0)
         :else (let [out (get this 0 (range c))]
                 (if (number? out)
-                  (matrix (vector out))
+                  (matrix (clojure.core/vector out))
                   out)))))
   (more [this]
     (if-let [nxt (next this)]
@@ -66,7 +66,7 @@
   (cons [this x]
     (cond
       (matrix? x)  (vstack this x)
-      (and (coll? x) (number? (first x))) (vstack this (matrix (vector x)))
+      (and (coll? x) (number? (first x))) (vstack this (matrix (clojure.core/vector x)))
       :else (vstack this (matrix x))))
   (seq [this]
     (let [[r c] (size this)]
@@ -87,6 +87,7 @@
     (if vector?
       (clojure.core/* (nrows this) (ncols this))
       (nrows this)))
+
   clojure.lang.Sequential)
 
 (defn me [^Matrix mat]
@@ -152,12 +153,18 @@
 (defn get
   "Given matrix `m`, get row `r` and column `c`, where `r` and/or
   `c` can be either a value or vector to return a single value or
-  a sub-matrix."
-  [^Matrix m r c]
-  (let [out (dotom .get m (int-arraytise r) (int-arraytise c))]
-    (if (number? out)
-      out
-      (matrix out))))
+  a sub-matrix. Pass in a single arg, i, so do row-first traversal index
+  access."
+  ([^Matrix m i]
+     (let [out (dotom .get m (int-arraytise i))]
+       (if (number? out)
+         out
+         (matrix out))))
+  ([^Matrix m r c]
+     (let [out (dotom .get m (int-arraytise r) (int-arraytise c))]
+       (if (number? out)
+         out
+         (matrix out)))))
 
 (defn set [^Matrix m ^long r ^long c ^double e]
   (dotom .put m r c e))
@@ -199,7 +206,7 @@
 (defn column  ;; TODO remove from api
   "`column` coerces a seq of numbers to a column `Matrix`."
   [^doubles seq]
-  (matrix seq))
+  (vector seq))
 
 (derive java.util.Collection ::collection)
 (derive DoubleMatrix ::double-matrix)
@@ -221,18 +228,24 @@
    (Matrix. x vector? meta)))
 
 (defmethod matrix ::collection
-  [seq-of-seqs]
-  (if (number? (first seq-of-seqs))
-    (matrix (DoubleMatrix. (into-array Double/TYPE (clojure.core/map double seq-of-seqs))))
-    (let [lengths (clojure.core/map count seq-of-seqs)
-          flen    (first lengths)]
-      (cond
-        (or (= (count lengths) 0) (some zero? lengths)) (matrix (DoubleMatrix. 0 0))
-        (every? (partial = flen) lengths)
-        (matrix
-          (DoubleMatrix.
-            ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE (clojure.core/map double %)) seq-of-seqs))))
-        :else (throw+ {:error "Cannot create a ragged matrix."})))))
+  ([s]
+     (matrix s false nil))
+  ([seq-of-seqs vector? meta-args]
+     (if (number? (first seq-of-seqs))
+       (matrix (DoubleMatrix. (into-array Double/TYPE (clojure.core/map double seq-of-seqs)))
+               vector?
+               meta-args)
+         (let [lengths (clojure.core/map count seq-of-seqs)
+               flen    (first lengths)]
+           (cond
+            (or (= (count lengths) 0) (some zero? lengths)) (matrix (DoubleMatrix. 0 0) vector? meta-args)
+            (every? (partial = flen) lengths)
+            (matrix
+             (DoubleMatrix.
+              ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE (clojure.core/map double %)) seq-of-seqs)))
+             vector?
+             meta-args)
+            :else (throw+ {:error "Cannot create a ragged matrix."}))))))
 
 (defmethod matrix java.lang.Double
   [x]
@@ -245,6 +258,14 @@
 (defmethod matrix :default
   [m & _]
   nil)
+
+;; Constructor for vector type.
+(defn vector
+  ([m]
+     (vector m nil))
+  ([m meta-map]
+     {:pre [(= (count m) (count (flatten m)))]}
+      (matrix m true meta-map)))
 
 (defn diag
   "`diag` creates a diagonal matrix from a seq of numbers or extracts
@@ -1174,7 +1195,8 @@ Uses the same algorithm as java's default Random constructor."
 
 ;;; TODO: pow is more complex and not currenty supported
 
-;; ---------------------------------------------------------------------------;;; # matrix-api
+;; ---------------------------------------------------------------------------;;;
+;;; # matrix-api
 ;;;
 ;;; Extend Matrix type to implement matrix-api protocols
 ;;; Note that the matrix-api notion of a vector conflicts with
@@ -1187,8 +1209,7 @@ Uses the same algorithm as java's default Random constructor."
   (construct-matrix   [m data]
     (matrix data))
   (new-vector         [m length]
-    (zeros length)  ;; this makes the matrix-api 0.0.8 tests pass but is wrong
-    #_(throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+    (vector (repeat length 0)))
   (new-matrix         [m rows columns]
     (zeros rows columns))
   (new-matrix-nd      [m shape]
@@ -1202,7 +1223,7 @@ Uses the same algorithm as java's default Random constructor."
                             :else                 2))
   (get-shape  [m] (filter (partial < 1) (size m)))
   (is-scalar? [m] (= [1 1] (size m)))
-  (is-vector? [m] false #_(vector? m))
+  (is-vector? [m] (.vector? m))
   (dimension-count [m dimension-number] (let [[r c] (size m)]
                                           (condp = dimension-number
                                             0 r
@@ -1210,10 +1231,7 @@ Uses the same algorithm as java's default Random constructor."
                                             nil)))
 
   mp/PIndexedAccess
-  (get-1d [m i] (cond
-                  (and (vector? m) (row? m)) (get m 0 i)
-                  (and (vector? m) (column? m)) (get m i 0)
-                  :else (throw (IllegalArgumentException.  "Not a vector"))))
+  (get-1d [m i] (get m i))
   (get-2d [m row column] (get m row column))
   (get-nd [m indexes] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
 
