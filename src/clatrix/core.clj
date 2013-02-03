@@ -1164,7 +1164,13 @@ Uses the same algorithm as java's default Random constructor."
   mp/PTypeInfo
   (element-type [m]
     java.lang.Double)
-)
+
+  mp/PSpecialisedConstructors
+  (identity-matrix [m dims]
+    (eye dims))
+  (diagonal-matrix [m values]
+    (diag values))
+  )
 
 ;;; Register the implementation with core.matrix
 (imp/register-implementation (zeros 2 2))
