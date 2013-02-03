@@ -1284,6 +1284,10 @@ Uses the same algorithm as java's default Random constructor."
       1 (slice m _ i))
     (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
 
+  PMatrixSubComponents
+  (main-diagonal [m]
+    (diag m))
+
   mp/PFunctionalOperations
   (element-seq [m]
     (flatten m))
