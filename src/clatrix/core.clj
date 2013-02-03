@@ -1277,6 +1277,10 @@ Uses the same algorithm as java's default Random constructor."
   (element-multiply [m a]
     (mult (matrix m) a))
 
+  mp/PVectorTransform
+  (vector-transform [m v]
+    (* m v))
+
   mp/PMatrixScaling
   (scale [m a]
     (mult (matrix m) a))
