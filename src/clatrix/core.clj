@@ -1151,10 +1151,6 @@ Uses the same algorithm as java's default Random constructor."
       1 (slice m _ i))
     (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
 
-  mp/PConversion
-  (convert-to-nested-vectors [m]
-    (as-vec m))
-
   mp/PFunctionalOperations
   (element-seq [m]
     (flatten m))
@@ -1186,6 +1182,10 @@ Uses the same algorithm as java's default Random constructor."
   mp/PCoercion
   (coerce-param [m param]
     (matrix param))
+
+  mp/PConversion
+  (convert-to-nested-vectors [m]
+    (as-vec m))
   )
 
 ;;; Register the implementation with core.matrix
