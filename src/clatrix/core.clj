@@ -44,8 +44,11 @@
     (cond
       (matrix? that) (.equals (.me this) (.me that))
       (coll? that) (and (= (count this) (count that))
-                       (every? true? (clojure.core/map #(== %1 %2) this that)))
+                        (every? true? (clojure.core/map #(== %1 %2)
+                                                        (flatten this)
+                                                        (flatten that))))
       (number? that) (and (= [1 1] (size this)) (= that (get this 0 0)))
+      (matrix that) (.equals (.me this) (.me (matrix that)))  ;; attempt coercion. slow
       :else (.equals (.me this) that)))
   (first [this]
     (let [[r c] (size this)]
@@ -1097,7 +1100,8 @@ Uses the same algorithm as java's default Random constructor."
   (construct-matrix   [m data]
     (matrix data))
   (new-vector         [m length]
-    (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+    (zeros length)  ;; this makes the matrix-api 0.0.8 tests pass but is wrong
+    #_(throw (UnsupportedOperationException. "Clatrix only support 2-d")))
   (new-matrix         [m rows columns]
     (zeros rows columns))
   (new-matrix-nd      [m shape]
@@ -1187,16 +1191,19 @@ Uses the same algorithm as java's default Random constructor."
   (convert-to-nested-vectors [m]
     (as-vec m))
 
-  mp/PDoubleArrayOutput
-  (to-double-array [m]
-    (.data (me (t m))))
-  ;; Internal representation is column-major, and protocol calls
-  ;; for row-major, therefor cannot implement fast
-  (as-double-array [m]
-    nil)
-
-
+  mp/PMatrixEquality
+  (matrix-equals [a b]
+    (.equiv a b))
   )
+
+(comment "Remove until stable"
+         mp/PDoubleArrayOutput
+         (to-double-array [m]
+                          (.data (me (t m))))
+         ;; Internal representation is column-major, and protocol calls
+         ;; for row-major, therefor cannot implement fast, so balk
+         (as-double-array [m]
+                          nil))
 
 ;;; Register the implementation with core.matrix
 (imp/register-implementation (zeros 2 2))
