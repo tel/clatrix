@@ -1017,6 +1017,11 @@ Uses the same algorithm as java's default Random constructor."
        :l (matrix ^DoubleMatrix (.l lu))
        :u (matrix ^DoubleMatrix (.u lu))})))
 
+(defn det
+  "`(det A)` computes the determinant of A. Odd that there is no built in fn for this."
+  [^Matrix mat]
+  (->> mat lu :u diag (apply *)))
+
 ;;; # Printing the matrices
 ;;;
 ;;; When normally working with matrices in a REPL, it's huge mistake
@@ -1206,6 +1211,18 @@ Uses the same algorithm as java's default Random constructor."
     (+ m a))
   (matrix-sub [m a]
     (- m a))
+
+  mp/PMatrixOps
+  (trace [m]
+    (trace m))
+  (determinant [m]
+    (det m))
+  (inverse [m]
+    (i m))
+  (negate [m]
+    (* -1 m))
+  (transpose [m]
+    (t m))
 
   )
 
