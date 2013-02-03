@@ -1293,6 +1293,16 @@ Uses the same algorithm as java's default Random constructor."
   (matrix-sub [m a]
     (- m a))
 
+  mp/PVectorOps
+  (vector-dot [a b]
+    (dot a b))
+  (length [a]
+    (.length (me a)))
+  (length-squared [a]
+    (let [l (.length (me a))] (clojure.core/* l l)))
+  (normalise [a]
+    (div a (sum a)))
+
   mp/PMatrixOps
   (trace [m]
     (trace m))
