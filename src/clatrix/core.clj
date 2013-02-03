@@ -231,6 +231,18 @@
             ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE (clojure.core/map double %)) seq-of-seqs))))
         :else (throw+ {:error "Cannot create a ragged matrix."})))))
 
+(defmethod matrix java.lang.Double
+  [x]
+  (matrix [x]))
+
+(defmethod matrix java.lang.Long
+  [x]
+  (matrix [x]))
+
+(defmethod matrix :default
+  [m & _]
+  nil)
+
 (defn diag
   "`diag` creates a diagonal matrix from a seq of numbers or extracts
   the diagonal of a `Matrix` as a seq."
@@ -1170,6 +1182,10 @@ Uses the same algorithm as java's default Random constructor."
     (eye dims))
   (diagonal-matrix [m values]
     (diag values))
+
+  mp/PCoercion
+  (coerce-param [m param]
+    (matrix param))
   )
 
 ;;; Register the implementation with core.matrix
