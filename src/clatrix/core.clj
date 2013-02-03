@@ -401,7 +401,10 @@ Uses the same algorithm as java's default Random constructor."
 
 (defn t
   "`(t A)` is the transpose of `A`."
-  [^Matrix mat] (matrix (dotom .transpose mat)))
+  [^Matrix mat]
+  (if (vector? mat)
+    mat
+    (matrix (dotom .transpose mat))))
 
 (defn hstack
   "`hstack` concatenates a number of matrices by aligning them
