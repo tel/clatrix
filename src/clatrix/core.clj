@@ -1097,7 +1097,68 @@ Uses the same algorithm as java's default Random constructor."
                 (.write w (format fmt (slice submat i j))))))
           (.write w "\n"))))))
 
-;;; # matrix-api
+
+;;;  # Native math operators
+;;;
+;;;  JBLAS provides several fast and useful mathematical functions,
+;;;  mirroring Java's Math namespace, applied
+;;;  elementwise to the Matrix.  Here we import them.
+;;;  They are provided in a funcional form
+;;;  as well as a mutating form, the latter have i (for in-place)
+;;;  appended to their names.
+
+;;; Helper macro
+(defmacro promote-mffun* [defname name fname]
+  (let [m (gensym)]
+    `(~defname ~name ^Matrix [^Matrix ~m] (matrix (dotom ~fname ~m)))))
+
+;;; These are the functional style matrix functions.  They accept a
+;;; matrix and return a new matrix with the function applied element-wise.
+(promote-mffun* defn exp    MatrixFunctions/exp)
+(promote-mffun* defn abs    MatrixFunctions/abs)
+(promote-mffun* defn acos   MatrixFunctions/acos)
+(promote-mffun* defn asin   MatrixFunctions/asin)
+(promote-mffun* defn atan   MatrixFunctions/atan)
+(promote-mffun* defn cbrt   MatrixFunctions/cbrt)
+(promote-mffun* defn ceil   MatrixFunctions/ceil)
+(promote-mffun* defn cos    MatrixFunctions/cos)
+(promote-mffun* defn cosh   MatrixFunctions/cosh)
+(promote-mffun* defn exp    MatrixFunctions/exp)
+(promote-mffun* defn floor  MatrixFunctions/floor)
+(promote-mffun* defn log    MatrixFunctions/log)
+(promote-mffun* defn log10  MatrixFunctions/log10)
+(promote-mffun* defn signum MatrixFunctions/signum)
+(promote-mffun* defn sin    MatrixFunctions/sin)
+(promote-mffun* defn sinh   MatrixFunctions/sinh)
+(promote-mffun* defn sqrt   MatrixFunctions/sqrt)
+(promote-mffun* defn tan    MatrixFunctions/tan)
+(promote-mffun* defn tanh   MatrixFunctions/tanh)
+
+;;; These are the inplace functions.  They mutate the passed
+;;; in matrix with the function.  They are faster
+(promote-mffun* defn exp!    MatrixFunctions/expi)
+(promote-mffun* defn abs!    MatrixFunctions/absi)
+(promote-mffun* defn acos!   MatrixFunctions/acosi)
+(promote-mffun* defn asin!   MatrixFunctions/asini)
+(promote-mffun* defn atan!   MatrixFunctions/atani)
+(promote-mffun* defn cbrt!   MatrixFunctions/cbrti)
+(promote-mffun* defn ceil!   MatrixFunctions/ceili)
+(promote-mffun* defn cos!    MatrixFunctions/cosi)
+(promote-mffun* defn cosh!   MatrixFunctions/coshi)
+(promote-mffun* defn exp!    MatrixFunctions/expi)
+(promote-mffun* defn floor!  MatrixFunctions/floori)
+(promote-mffun* defn log!    MatrixFunctions/logi)
+(promote-mffun* defn log10!  MatrixFunctions/log10i)
+(promote-mffun* defn signum! MatrixFunctions/signumi)
+(promote-mffun* defn sin!    MatrixFunctions/sini)
+(promote-mffun* defn sinh!   MatrixFunctions/sinhi)
+(promote-mffun* defn sqrt!   MatrixFunctions/sqrti)
+(promote-mffun* defn tan!    MatrixFunctions/tani)
+(promote-mffun* defn tanh!   MatrixFunctions/tanhi)
+
+;;; TODO: pow is more complex and not currenty supported
+
+;; ---------------------------------------------------------------------------;;; # matrix-api
 ;;;
 ;;; Extend Matrix type to implement matrix-api protocols
 ;;; Note that the matrix-api notion of a vector conflicts with
@@ -1231,7 +1292,9 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PSummable
   (sum [m]
-    (sum m)))
+    (sum m))
+
+  )
 
 (comment "Remove until stable"
          mp/PDoubleArrayOutput
@@ -1240,67 +1303,51 @@ Uses the same algorithm as java's default Random constructor."
          ;; Internal representation is column-major, and protocol calls
          ;; for row-major, therefor cannot implement fast, so balk
          (as-double-array [m]
-                          nil))
+                          nil)
+
+
+  mp/PMathsFunctions
+  (abs     [m] (abs m))
+  (abs!    [m] (abs! m))
+  (acos    [m] (acos m))
+  (acos!   [m] (acos! m))
+  (asin    [m] (asin m))
+  (asin!   [m] (asin! m))
+  (atan    [m] (atan m))
+  (atan!   [m] (atan! m))
+  (cbrt    [m] (cbrt m))
+  (cbrt!   [m] (cbrt! m))
+  (ceil    [m] (ceil m))
+  (ceil!   [m] (ceil! m))
+  (cos     [m] (cos m))
+  (cos!    [m] (cos! m))
+  (cosh    [m] (cosh m))
+  (cosh!   [m] (cosh! m))
+  (exp     [m] (exp m))
+  (exp!    [m] (exp! m))
+  (floor   [m] (floor m))
+  (floor!  [m] (floor! m))
+  (log     [m] (log m))
+  (log!    [m] (log! m))
+  (log10   [m] (log10 m))
+  (log10!  [m] (log10! m))
+  (round   [m] (round m))
+  (round!  [m] (round! m))
+  (signum  [m] (signum m))
+  (signum! [m] (signum! m))
+  (sin     [m] (sin m))
+  (sin!    [m] (sin! m))
+  (sinh    [m] (sinh m))
+  (sinh!   [m] (sinh! m))
+  (sqrt    [m] (sqrt m))
+  (sqrt!   [m] (sqrt! m))
+  (tan     [m] (tan m))
+  (tan!    [m] (tan! m))
+  (tanh    [m] (tanh m))
+  (tanh!   [m] (tanh! m))
+
+
+         )
 
 ;;; Register the implementation with core.matrix
 (imp/register-implementation (zeros 2 2))
-
-;;;  # Native math operators
-;;;
-;;;  JBLAS provides several fast and useful mathematical functions,
-;;;  mirroring Java's Math namespace, applied
-;;;  elementwise to the Matrix.  Here we import them.
-;;;  They are provided in a funcional form
-;;;  as well as a mutating form, the latter have i (for in-place)
-;;;  appended to their names.
-
-;;; Helper macro
-(defmacro promote-mffun* [defname name fname]
-  (let [m (gensym)]
-    `(~defname ~name ^Matrix [^Matrix ~m] (matrix (dotom ~fname ~m)))))
-
-;;; These are the functional style matrix functions.  They accept a
-;;; matrix and return a new matrix with the function applied element-wise.
-(promote-mffun* defn exp    MatrixFunctions/exp)
-(promote-mffun* defn abs    MatrixFunctions/abs)
-(promote-mffun* defn acos   MatrixFunctions/acos)
-(promote-mffun* defn asin   MatrixFunctions/asin)
-(promote-mffun* defn atan   MatrixFunctions/atan)
-(promote-mffun* defn cbrt   MatrixFunctions/cbrt)
-(promote-mffun* defn ceil   MatrixFunctions/ceil)
-(promote-mffun* defn cos    MatrixFunctions/cos)
-(promote-mffun* defn cosh   MatrixFunctions/cosh)
-(promote-mffun* defn exp    MatrixFunctions/exp)
-(promote-mffun* defn floor  MatrixFunctions/floor)
-(promote-mffun* defn log    MatrixFunctions/log)
-(promote-mffun* defn log10  MatrixFunctions/log10)
-(promote-mffun* defn signum MatrixFunctions/signum)
-(promote-mffun* defn sin    MatrixFunctions/sin)
-(promote-mffun* defn sinh   MatrixFunctions/sinh)
-(promote-mffun* defn sqrt   MatrixFunctions/sqrt)
-(promote-mffun* defn tan    MatrixFunctions/tan)
-(promote-mffun* defn tanh   MatrixFunctions/tanh)
-
-;;; These are the inplace functions.  They mutate the passed
-;;; in matrix with the function.  They are faster
-(promote-mffun* defn exp!    MatrixFunctions/expi)
-(promote-mffun* defn abs!    MatrixFunctions/absi)
-(promote-mffun* defn acos!   MatrixFunctions/acosi)
-(promote-mffun* defn asin!   MatrixFunctions/asini)
-(promote-mffun* defn atan!   MatrixFunctions/atani)
-(promote-mffun* defn cbrt!   MatrixFunctions/cbrti)
-(promote-mffun* defn ceil!   MatrixFunctions/ceili)
-(promote-mffun* defn cos!    MatrixFunctions/cosi)
-(promote-mffun* defn cosh!   MatrixFunctions/coshi)
-(promote-mffun* defn exp!    MatrixFunctions/expi)
-(promote-mffun* defn floor!  MatrixFunctions/floori)
-(promote-mffun* defn log!    MatrixFunctions/logi)
-(promote-mffun* defn log10!  MatrixFunctions/log10i)
-(promote-mffun* defn signum! MatrixFunctions/signumi)
-(promote-mffun* defn sin!    MatrixFunctions/sini)
-(promote-mffun* defn sinh!   MatrixFunctions/sinhi)
-(promote-mffun* defn sqrt!   MatrixFunctions/sqrti)
-(promote-mffun* defn tan!    MatrixFunctions/tani)
-(promote-mffun* defn tanh!   MatrixFunctions/tanhi)
-
-;;; TODO: pow is more complex and not currenty supported
