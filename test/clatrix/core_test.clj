@@ -25,6 +25,7 @@
 (def ridx (range n))
 (def cidx (range m))
 
+
 ;; properties of A/S
 (expect Matrix A)
 (expect Matrix B)
