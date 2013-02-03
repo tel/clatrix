@@ -695,6 +695,16 @@ Uses the same algorithm as java's default Random constructor."
                        j (range m)]
                    [i j (fun (get mat i j))]))))
 
+;; (last (for ...)) seems like a strange
+(defn map!
+  "Inplace version of map."
+  [fun ^Matrix mat]
+  (let [[n m] (size mat)]
+    (last
+     (for [i (range n)
+           j (range m)]
+       (set mat i j (fun (get mat i j)))))))
+
 (defn ereduce
   "Quick and dirty reduce."
   [fun ^Matrix mat]
@@ -1138,6 +1148,8 @@ Uses the same algorithm as java's default Random constructor."
     (flatten m))
   (element-map [m f]
     (map f m))
+  (element-map! [m f]
+    (map f m))
   (element-reduce [m f]
     (ereduce f m))
 
@@ -1145,7 +1157,14 @@ Uses the same algorithm as java's default Random constructor."
   (matrix-multiply [m a]
     (* (matrix m) (matrix a)))
   (element-multiply [m a]
-    (mult (matrix m) a)))
+    (mult (matrix m) a))
+
+  ;; ---------------------------------------------------------------------------
+  ;;  Optional protocols
+  mp/PTypeInfo
+  (element-type [m]
+    java.lang.Double)
+)
 
 ;;; Register the implementation with core.matrix
 (imp/register-implementation (zeros 2 2))
