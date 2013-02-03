@@ -817,6 +817,11 @@ Uses the same algorithm as java's default Random constructor."
                :else       (clojure.core/- a b)))
   ([a b & as] (reduce - a (cons b as))))
 
+(defn sum
+  "`(sum M)` computes the sum of all elements of M"
+  [m]
+  (.sum (me m)))
+
 (defn dot
   "`dot` computes the inner product between two vectors. This is
   extended to work on matrices considered as `nm`-dimensional
@@ -1224,8 +1229,9 @@ Uses the same algorithm as java's default Random constructor."
   (transpose [m]
     (t m))
 
-  )
-
+  mp/PSummable
+  (sum [m]
+    (sum m)))
 
 (comment "Remove until stable"
          mp/PDoubleArrayOutput
