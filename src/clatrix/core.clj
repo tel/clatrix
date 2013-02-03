@@ -1201,6 +1201,11 @@ Uses the same algorithm as java's default Random constructor."
   (pre-scale [m a]
     (mult (matrix m) a))
 
+  mp/PMatrixAdd
+  (matrix-add [m a]
+    (+ m a))
+  (matrix-sub [m a]
+    (- m a))
 
   )
 
