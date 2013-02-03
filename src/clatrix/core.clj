@@ -32,11 +32,13 @@
   (toString [^Matrix mat]
     (str (list `matrix
                (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat))))))))
+
   clojure.lang.IObj
   (withMeta [this metadata]
     (Matrix. me vector? metadata))
   (meta [this]
     metadata)
+
   clojure.lang.ISeq
   (equiv [this that]
     (cond
@@ -76,6 +78,7 @@
         :else nil)))
   (empty [this]
     (matrix []))
+
   clojure.lang.Counted
   (count [this]
     (if vector?
@@ -152,6 +155,7 @@
     (if (number? out)
       out
       (matrix out))))
+
 (defn set [^Matrix m ^long r ^long c ^double e]
   (dotom .put m r c e))
 
@@ -1061,7 +1065,9 @@ Uses the same algorithm as java's default Random constructor."
 ;;; # matrix-api
 ;;;
 ;;; Extend Matrix type to implement matrix-api protocols
-
+;;; Note that the matrix-api notion of a vector conflicts with
+;;; our notion of vector.  Essentially, all our vectors are
+;;; considered matrix-row or matrix-column
 (extend-type Matrix
   mp/PImplementation
   (implementation-key [m]
@@ -1069,7 +1075,7 @@ Uses the same algorithm as java's default Random constructor."
   (construct-matrix   [m data]
     (matrix data))
   (new-vector         [m length]
-    (zeros length))
+    (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
   (new-matrix         [m rows columns]
     (zeros rows columns))
   (new-matrix-nd      [m shape]
@@ -1089,6 +1095,7 @@ Uses the same algorithm as java's default Random constructor."
                                             0 r
                                             1 c
                                             nil)))
+
   mp/PIndexedAccess
   (get-1d [m i] (cond
                   (and (vector? m) (row? m)) (get m 0 i)
@@ -1138,8 +1145,7 @@ Uses the same algorithm as java's default Random constructor."
   (matrix-multiply [m a]
     (* (matrix m) (matrix a)))
   (element-multiply [m a]
-    (mult (matrix m) a))
-  )
+    (mult (matrix m) a)))
 
 ;;; Register the implementation with core.matrix
 (imp/register-implementation (zeros 2 2))
