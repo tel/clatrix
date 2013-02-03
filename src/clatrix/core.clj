@@ -703,12 +703,28 @@ Uses the same algorithm as java's default Random constructor."
 (defn map
   "`map` is a specialization of `map-indexed` where the function does
   not get passed the indices."
-  [fun ^Matrix mat]
-  (let [[n m] (size mat)]
-    (from-sparse n m
-                 (for [i (range n)
-                       j (range m)]
-                   [i j (fun (get mat i j))]))))
+  ([fun ^Matrix mat]
+     (let [[n m] (size mat)]
+       (from-sparse n m
+                    (for [i (range n)
+                          j (range m)]
+                      [i j (fun (get mat i j))]))))
+
+  ;; This is ugly
+  ([fun ^Matrix mat arg]
+     (let [[n m] (size mat)]
+       (from-sparse n m
+                    (for [i (range n)
+                          j (range m)]
+                      [i j (fun (get mat i j) arg)]))))
+
+  ;; This is uglier
+  ([fun ^Matrix mat arg & more]
+     (let [[n m] (size mat)]
+       (from-sparse n m
+                    (for [i (range n)
+                          j (range m)]
+                      [i j (apply fun (get mat i j) arg more)])))))
 
 ;; (last (for ...)) seems like a strange
 (defn map!
@@ -1284,21 +1300,20 @@ Uses the same algorithm as java's default Random constructor."
       1 (slice m _ i))
     (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
 
-  PMatrixSubComponents
-  (main-diagonal [m]
-    (diag m))
-
   mp/PFunctionalOperations
   (element-seq [m]
     (flatten m))
   (element-map [m f]
     (map f m))
+  (element-map [m f a]
+    (map f m a))
   (element-map! [m f]
     (map f m))
   (element-reduce [m f]
-    (ereduce f m))
+    (ereduce f m)))
 
-  )
+;;; Register the implementation with core.matrix
+(imp/register-implementation (zeros 2 2))
 
 (comment "Remove until stable"
          mp/PDoubleArrayOutput
@@ -1308,7 +1323,6 @@ Uses the same algorithm as java's default Random constructor."
          ;; for row-major, therefor cannot implement fast, so balk
          (as-double-array [m]
                           nil)
-
 
   mp/PMathsFunctions
   (abs     [m] (abs m))
@@ -1350,8 +1364,6 @@ Uses the same algorithm as java's default Random constructor."
   (tanh    [m] (tanh m))
   (tanh!   [m] (tanh! m))
 
-
-         )
-
-;;; Register the implementation with core.matrix
-(imp/register-implementation (zeros 2 2))
+  PMatrixSubComponents
+  (main-diagonal [m]
+                 (diag m)))
