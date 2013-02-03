@@ -1213,29 +1213,6 @@ Uses the same algorithm as java's default Random constructor."
   mp/PMatrixCloning
   (clone [m] (matrix m))
 
-  mp/PMatrixSlices
-  (get-row [m i]
-    (slice m i _))
-  (get-column [m i]
-    (slice m _ i))
-  (get-major-slice [m i]
-    (slice m i _))
-  (get-slice [m dimension i]
-    (condp = dimension
-      0 (slice m i _)
-      1 (slice m _ i))
-    (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
-
-  mp/PFunctionalOperations
-  (element-seq [m]
-    (flatten m))
-  (element-map [m f]
-    (map f m))
-  (element-map! [m f]
-    (map f m))
-  (element-reduce [m f]
-    (ereduce f m))
-
   ;; ---------------------------------------------------------------------------
   ;;  Optional protocols
   mp/PTypeInfo
@@ -1293,6 +1270,29 @@ Uses the same algorithm as java's default Random constructor."
   mp/PSummable
   (sum [m]
     (sum m))
+
+  mp/PMatrixSlices
+  (get-row [m i]
+    (slice m i _))
+  (get-column [m i]
+    (slice m _ i))
+  (get-major-slice [m i]
+    (slice m i _))
+  (get-slice [m dimension i]
+    (condp = dimension
+      0 (slice m i _)
+      1 (slice m _ i))
+    (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+
+  mp/PFunctionalOperations
+  (element-seq [m]
+    (flatten m))
+  (element-map [m f]
+    (map f m))
+  (element-map! [m f]
+    (map f m))
+  (element-reduce [m f]
+    (ereduce f m))
 
   )
 
