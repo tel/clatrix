@@ -1186,6 +1186,16 @@ Uses the same algorithm as java's default Random constructor."
   mp/PConversion
   (convert-to-nested-vectors [m]
     (as-vec m))
+
+  mp/PDoubleArrayOutput
+  (to-double-array [m]
+    (.data (me (t m))))
+  ;; Internal representation is column-major, and protocol calls
+  ;; for row-major, therefor cannot implement fast
+  (as-double-array [m]
+    nil)
+
+
   )
 
 ;;; Register the implementation with core.matrix
