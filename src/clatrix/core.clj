@@ -1165,12 +1165,6 @@ Uses the same algorithm as java's default Random constructor."
   (element-reduce [m f]
     (ereduce f m))
 
-  mp/PMatrixMultiply
-  (matrix-multiply [m a]
-    (* (matrix m) (matrix a)))
-  (element-multiply [m a]
-    (mult (matrix m) a))
-
   ;; ---------------------------------------------------------------------------
   ;;  Optional protocols
   mp/PTypeInfo
@@ -1194,7 +1188,22 @@ Uses the same algorithm as java's default Random constructor."
   mp/PMatrixEquality
   (matrix-equals [a b]
     (.equiv a b))
+
+  mp/PMatrixMultiply
+  (matrix-multiply [m a]
+    (* (matrix m) (matrix a)))
+  (element-multiply [m a]
+    (mult (matrix m) a))
+
+  mp/PMatrixScaling
+  (scale [m a]
+    (mult (matrix m) a))
+  (pre-scale [m a]
+    (mult (matrix m) a))
+
+
   )
+
 
 (comment "Remove until stable"
          mp/PDoubleArrayOutput
