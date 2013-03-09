@@ -1246,7 +1246,7 @@ Uses the same algorithm as java's default Random constructor."
          (catch Throwable t
            (matrix (set (matrix m) i 0 x)))))
 
-  (set-2d [m row column x] (set m row column x))
+  (set-2d [m row column x] (matrix (set (matrix m) row column x)))
   (set-nd [m indexes x] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
   (is-mutable? [m] false)
 
