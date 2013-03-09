@@ -1338,10 +1338,12 @@ Uses the same algorithm as java's default Random constructor."
   mp/PFunctionalOperations
   (element-seq [m]
     (flatten m))
-  (element-map [m f]
-    (map f m))
-  (element-map [m f a]
-    (map f m a))
+  (element-map
+    ([m f]
+       (clojure.core/map f (flatten m)))
+    ([m f a]
+       (clojure.core/map f (flatten m) a)))
+
   (element-map! [m f]
     (map f m))
   (element-reduce [m f]
