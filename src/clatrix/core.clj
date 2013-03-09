@@ -219,7 +219,8 @@
   (fn [m & args] (class m)))
 
 (defmethod matrix ::matrix
-  ([^Matrix m & _] m))
+  ([^Matrix m & _]
+     (Matrix. (.dup (.me m)) (.vector? m) (.meta m))))
 
 (defmethod matrix ::double-matrix
   ([^DoubleMatrix x]
@@ -1239,10 +1240,12 @@ Uses the same algorithm as java's default Random constructor."
   (get-nd [m indexes] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
 
   mp/PIndexedSetting
-  (set-1d [m i x] (cond
-                      (and (vector? m) (row? m)) (set m 0 i x)
-                      (and (vector? m) (column? m)) (set m i 0 x)
-                      :else (throw (IllegalArgumentException.  "Not a vector"))))
+  (set-1d [m i x]
+    ;; We don't know the 1*x or x*1, so just guess. Yuck
+    (try (matrix (set (matrix m) 0 i x))
+         (catch Throwable t
+           (matrix (set (matrix m) i 0 x)))))
+
   (set-2d [m row column x] (set m row column x))
   (set-nd [m indexes x] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
   (is-mutable? [m] false)
