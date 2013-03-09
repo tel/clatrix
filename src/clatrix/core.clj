@@ -1303,14 +1303,11 @@ Uses the same algorithm as java's default Random constructor."
   (vector-dot [a b]
     (dot a b))
   (length-squared [a]
-    (reduce +
-            (map #(* % %) a)))
+    (* (norm a) (norm a)))
   (length [a]
-    (Math/sqrt
-     (reduce +
-            (map #(* % %) a))))
+    (norm a))
   (normalise [a]
-    (div a (sum a)))
+    (normalize a))
 
   mp/PMatrixOps
   (trace [m]
