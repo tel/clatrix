@@ -1,8 +1,8 @@
 (ns clatrix.core
   (:refer-clojure :exclude [get set map-indexed map rand vector? + - * pp vector])
   (:use [slingshot.slingshot :only [throw+]])
-  (:require [core.matrix.protocols :as mp]
-            [core.matrix.implementations :as imp])
+  (:require [clojure.core.matrix.protocols :as mp]
+            [clojure.core.matrix.implementations :as imp])
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
             Decompose Decompose$LUDecomposition Eigen Solve Geometry
             Singular MatrixFunctions]
