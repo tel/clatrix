@@ -1302,10 +1302,13 @@ Uses the same algorithm as java's default Random constructor."
   mp/PVectorOps
   (vector-dot [a b]
     (dot a b))
-  (length [a]
-    (.length (me a)))
   (length-squared [a]
-    (let [l (.length (me a))] (clojure.core/* l l)))
+    (reduce +
+            (map #(* % %) a)))
+  (length [a]
+    (Math/sqrt
+     (reduce +
+            (map #(* % %) a))))
   (normalise [a]
     (div a (sum a)))
 
