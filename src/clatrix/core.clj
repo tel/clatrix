@@ -1224,7 +1224,7 @@ Uses the same algorithm as java's default Random constructor."
   (dimensionality [m] (cond (some zero? (size m)) 0
                             (vector? m)           2
                             :else                 2))
-  (get-shape  [m] (filter (partial < 1) (size m)))
+  (get-shape  [m] (size m))
   (is-scalar? [m] (= [1 1] (size m)))
   (is-vector? [m] (.vector? m))
   (dimension-count [m dimension-number] (let [[r c] (size m)]
@@ -1334,6 +1334,10 @@ Uses the same algorithm as java's default Random constructor."
       0 (slice m i _)
       1 (slice m _ i))
     (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+
+  mp/PSliceSeq
+  (get-major-slice-seq [m]
+      (slices m _ _))
 
   mp/PFunctionalOperations
   (element-seq [m]
