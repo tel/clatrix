@@ -28,36 +28,31 @@
 (declare get permute size matrix matrix? row? nrows ncols vstack vector)
 
 (deftype Matrix [^DoubleMatrix me ^Boolean vector? ^clojure.lang.IPersistentMap metadata]
-  Object
-  (toString [^Matrix mat]
-    (str (list `matrix
-               (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat))))))))
-
+   Object
+   (toString [^Matrix mat]
+     (str (list `matrix
+                 (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat))))))))
   clojure.lang.IObj
   (withMeta [this metadata]
     (Matrix. me vector? metadata))
   (meta [this]
     metadata)
-
   clojure.lang.ISeq
   (equiv [this that]
     (cond
       (matrix? that) (.equals (.me this) (.me that))
       (coll? that) (and (= (count this) (count that))
-                        (every? true? (clojure.core/map #(== %1 %2)
-                                                        (flatten this)
-                                                        (flatten that))))
+                        (every? true? (clojure.core/map #(== %1 %2) this that)))
       (number? that) (and (= [1 1] (size this)) (= that (get this 0 0)))
-      (matrix that) (.equals (.me this) (.me (matrix that)))  ;; attempt coercion. slow
       :else (.equals (.me this) that)))
   (first [this]
     (let [[r c] (size this)]
       (cond
         (or (zero? r) (zero? c)) nil
-        (and vector? (or (= r 1) (= c 1))) (get this 0 0)
+        (and (or (= r 1) (= c 1))) (get this 0 0)
         :else (let [out (get this 0 (range c))]
                 (if (number? out)
-                  (matrix (clojure.core/vector out))
+                  (matrix (vector out))
                   out)))))
   (more [this]
     (if-let [nxt (next this)]
@@ -66,7 +61,7 @@
   (cons [this x]
     (cond
       (matrix? x)  (vstack this x)
-      (and (coll? x) (number? (first x))) (vstack this (matrix (clojure.core/vector x)))
+      (and (coll? x) (number? (first x))) (vstack this (matrix (vector x)))
       :else (vstack this (matrix x))))
   (seq [this]
     (let [[r c] (size this)]
@@ -224,7 +219,7 @@
 
 (defmethod matrix ::double-matrix
   ([^DoubleMatrix x]
-   (matrix x (.isVector x) nil))
+   (matrix x false nil))   ;; name crash on .isVector.  Means different things here.
   ([^DoubleMatrix x vector? meta]
    (Matrix. x vector? meta)))
 
@@ -1223,9 +1218,11 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PDimensionInfo
   (dimensionality [m] (cond (some zero? (size m)) 0
-                            (vector? m)           2
+                            (vector? m)           1
                             :else                 2))
-  (get-shape  [m] (size m))
+  (get-shape  [m] (if (vector? m)
+                    [(max (nrows m) (ncols m))]
+                    (size m)))
   (is-scalar? [m] (= [1 1] (size m)))
   (is-vector? [m] (.vector? m))
   (dimension-count [m dimension-number] (let [[r c] (size m)]
@@ -1258,6 +1255,10 @@ Uses the same algorithm as java's default Random constructor."
   mp/PTypeInfo
   (element-type [m]
     java.lang.Double)
+
+  mp/PZeroDimensionAccess
+  (get-0d [m]
+    (first m))
 
   mp/PSpecialisedConstructors
   (identity-matrix [m dims]
@@ -1339,8 +1340,9 @@ Uses the same algorithm as java's default Random constructor."
     (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
 
   mp/PSliceSeq
+  ;; API wants a seq of Matrices
   (get-major-slice-seq [m]
-      (slices m _ _))
+    (clojure.core/map #(slice m % _) (range (nrows m))))
 
   mp/PFunctionalOperations
   (element-seq [m]
