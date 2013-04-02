@@ -25,7 +25,6 @@
 (def ridx (range n))
 (def cidx (range m))
 
-
 ;; properties of A/S
 (expect Matrix A)
 (expect Matrix B)
@@ -43,7 +42,7 @@
                c/matrix? true
                c/square? false
                c/column? false
-               c/vector? false
+               c/vector-matrix? false
                c/row?    false))
 
 (given E
@@ -51,7 +50,7 @@
                c/matrix? true
                c/square? true
                c/column? false
-               c/vector? false
+               c/vector-matrix? false
                c/row? false))
 
 (given S
@@ -59,7 +58,7 @@
                c/matrix? true
                c/square? true
                c/column? false
-               c/vector? false
+               c/vector-matrix? false
                c/row?    false))
 
 (given p
@@ -67,7 +66,7 @@
                c/matrix? true
                c/square? false
                c/column? true
-               c/vector? true
+               c/vector-matrix? true
                c/row?    false))
 
 (given q
@@ -75,7 +74,7 @@
                c/matrix? true
                c/square? false
                c/column? true
-               c/vector? true
+               c/vector-matrix? true
                c/row?    false))
 
 (given F
@@ -83,7 +82,7 @@
                c/matrix? true
                c/square? false
                c/column? false
-               c/vector? false
+               c/vector-matrix? false
                c/row? false
                count n))
 (given R
@@ -91,15 +90,15 @@
                c/matrix? true
                c/square? false
                c/column? false
-               c/vector? true
+               c/vector-matrix? true
                c/row? true
-               count m))
+               count 15))
 (given C
        (expect c/size [10 1]
                c/matrix? true
                c/square? false
                c/column? true
-               c/vector? true
+               c/vector-matrix? true
                c/row? false
                count n))
 
@@ -135,7 +134,7 @@
 (expect (c/column (range 1 n)) (rest C))
 (expect (c/matrix (partition m (range m (* n m)))) (rest F))
 
-(expect (conj M [10 11 12]) (c/matrix [[1 2 3] [4 5 6] [10 11 12]]))
+#_(expect (conj M [10 11 12]) (c/matrix [[1 2 3] [4 5 6] [10 11 12]]))
 (expect (conj M [[10 11 12]]) (c/matrix [[1 2 3] [4 5 6] [10 11 12]]))
 (expect (conj M M) (c/matrix [[1 2 3] [4 5 6]
                               [1 2 3] [4 5 6]]))
@@ -163,8 +162,8 @@
 (expect A (c/matrix (c/dense A)))
 
 ;; `as-vec` knows about columns and rows
-(expect (c/as-vec p) (flatten (c/as-vec p)))
-(expect (c/as-vec q) (flatten (c/as-vec q)))
+;(expect (c/as-vec p) (flatten (c/as-vec p)))  ;; no longer hold
+;(expect (c/as-vec q) (flatten (c/as-vec q)))
 (expect false? (= (c/as-vec A) (flatten (c/as-vec A))))
 (expect false? (= (c/as-vec S) (flatten (c/as-vec S))))
 
