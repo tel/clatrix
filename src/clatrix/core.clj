@@ -121,10 +121,8 @@
      :else (vstack this (matrix x))))
 
   (seq [this]
-    "Return a seq of rows for a 2D or a seq of entries for a 1D matrix"
-    (if (vector-matrix? this)
-      (seq (.toArray (.me this)))
-      (clojure.core/map matrix (row-list (.me this)))))
+    "Return a seq of entries for a 1D matrix"
+    (seq (.toArray (.me this))))
 
   (first [this]
     (first (seq this)))
