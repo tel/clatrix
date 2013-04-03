@@ -116,7 +116,7 @@
 
 (defn matrix?
   "`matrix?` tests whether an object is a `Matrix` object."
-  [m] (isa? (class m) Matrix))
+  [m] (instance? Matrix m))
 
 ;;; The most fundamental question about a matrix is its size. This
 ;;; also defines a number of other ideas such as whether a matrix is a
