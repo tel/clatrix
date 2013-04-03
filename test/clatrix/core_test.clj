@@ -1,7 +1,7 @@
 (ns clatrix.core-test
   (:use expectations)
   (:require [clatrix.core :as c])
-  (:import [clatrix.core Matrix]
+  (:import [clatrix.core Matrix Vector]
            [java.io StringReader PushbackReader]))
 
 (defn read* [str]
@@ -22,6 +22,7 @@
 (def R (c/t (c/matrix (range m))))
 (def C (c/column (range n)))
 (def M (c/matrix [[1 2 3] [4 5 6]]))
+(def V (c/vector [1 2 3])) 
 (def ridx (range n))
 (def cidx (range m))
 
@@ -36,10 +37,12 @@
 (expect Matrix R)
 (expect Matrix C)
 (expect Matrix M)
+(expect Vector V)
 
 (given A
        (expect c/size [n m]
                c/matrix? true
+               c/vec? false
                c/square? false
                c/column? false
                c/vector-matrix? false
@@ -101,6 +104,13 @@
                c/vector-matrix? true
                c/row? false
                count n))
+
+(given V
+       (expect c/size [3]
+               c/matrix? false
+               c/vec? true
+               c/clatrix? true
+               count 3)) 
 
 (let [z (rand)]
   (c/set A 0 0 z)

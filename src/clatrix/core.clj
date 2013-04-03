@@ -187,7 +187,11 @@
 ;;; order.
 (promote-mfun* defn ncols .columns)
 (promote-mfun* defn nrows .rows)
-(defn size [m] [(nrows m) (ncols m)])
+(defn size [m] 
+  (cond 
+    (matrix? m) [(nrows m) (ncols m)]
+    (vec? m) [(nrows m)]
+    :else (throw (IllegalArgumentException. "Not a Clatrix Vector or Matrix"))))
 (defn vector-matrix?
   "Is m nx1 or 1xn"
   [^Matrix m]
@@ -1495,12 +1499,6 @@ Uses the same algorithm as java's default Random constructor."
   (element-type [m]
     java.lang.Double/TYPE)
 
-  mp/PSpecialisedConstructors
-  (identity-matrix [m dims]
-    (eye dims))
-  (diagonal-matrix [m values]
-    (diag values))
-
   mp/PCoercion
   (coerce-param [m param]
     (to-matrix param))
@@ -1545,43 +1543,18 @@ Uses the same algorithm as java's default Random constructor."
   (normalise [a]
     (normalize a))
 
-  mp/PMatrixOps
-  (trace [m]
-    (trace m))
-  (determinant [m]
-    (det m))
-  (inverse [m]
-    (i m))
-  (negate [m]
-    (* -1 m))
-  (transpose [m]
-    (t m))
-
   mp/PSummable
   (sum [m]
     (sum m))
 
-  mp/PMatrixSlices
-  (get-row [m i]
-    (slice m i _))
-  (get-column [m i]
-    (slice m _ i))
-  (get-major-slice [m i]
-    (slice m i _))
-  (get-slice [m dimension i]
-    (condp = dimension
-      0 (slice m i _)
-      1 (slice m _ i)
-      (throw (UnsupportedOperationException. "Clatrix only support 2-d"))))
-
   mp/PSliceSeq
-  ;; API wants a seq of Matrices
+  ;; sequence of elements
   (get-major-slice-seq [m]
-    (clojure.core/map #(slice m % _) (range (nrows m))))
+    (seq (.toArray (me m))))
 
   mp/PFunctionalOperations
   (element-seq [m]
-    (flatten m))
+    (seq (.toArray (me m))))
   (element-map
     ([m f]
        (clojure.core/map f (flatten m)))
