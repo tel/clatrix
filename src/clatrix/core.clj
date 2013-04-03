@@ -141,8 +141,10 @@
 
   clojure.lang.Sequential)
 
-(defn me [^Matrix mat]
-  (.me mat))
+(defn me [mat]
+  (if (vec? mat) 
+    (.me ^Vector  mat)
+    (.me ^Matrix  mat)))
 
 (defmacro dotom [name m & args]
   `(~name ^DoubleMatrix (me ~m) ~@args))
@@ -228,8 +230,9 @@
          out
          (matrix out)))))
 
-(defn set [^Matrix m ^long r ^long c ^double e]
-  (dotom .put m r c e))
+(defn set 
+  ([^Matrix m ^long r ^long c ^double e]
+    (dotom .put m r c e)))
 
 ;;; Already this is sufficient to get some algebraic matrix
 ;;; properties, such as
@@ -255,7 +258,7 @@
   elements in row-major order. Treats `vector?` type matrices
   differently, though, flattening the return seq to a single vector."
   [^Matrix m]
-  (if (vector-matrix? m)
+  (if (or (vec? m) (vector-matrix? m))
     (vec (dotom .toArray m))
     (dense m)))
 
@@ -1260,6 +1263,16 @@ Uses the same algorithm as java's default Random constructor."
 
 ;;; TODO: pow is more complex and not currenty supported
 
+(defn make-new-matrix 
+  "Creates a new matrix filled with zeros"
+  ([shape]
+    (let [dims (count shape)]
+      (cond 
+        (== dims 0) 0
+        (== dims 1) (vector (repeat (first shape) 0))
+        (== dims 2) (zeros (first shape) (second shape))
+        :else (throw (UnsupportedOperationException. "Only 1-d vectors or 2-d matrices are supported."))))))
+
 ;; ---------------------------------------------------------------------------;;;
 ;;; # matrix-api
 ;;;
@@ -1274,23 +1287,19 @@ Uses the same algorithm as java's default Random constructor."
   (construct-matrix   [m data]
     (matrix data))
   (new-vector         [m length]
-    (vector (repeat length 0)))
+    (make-new-matrix [length]))
   (new-matrix         [m rows columns]
-    (zeros rows columns))
+    (make-new-matrix [rows columns]))
   (new-matrix-nd      [m shape]
-    (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+    (make-new-matrix shape))
   (supports-dimensionality? [m dimensions]
     (<= dimensions 2))
 
   mp/PDimensionInfo
-  (dimensionality [m] 2 #_(cond (some zero? (size m)) 0
-                                (vector? m)           1
-                                :else                 2))
-  (get-shape  [m] (size m) #_(if (vector? m)
-                               [(max (nrows m) (ncols m))]
-                               (size m)))
-  (is-scalar? [m] (= [1 1] (size m)))
-  (is-vector? [m] false #_(.vector? m))
+  (dimensionality [m] 2 )
+  (get-shape  [m] (size m))
+  (is-scalar? [m] false)
+  (is-vector? [m] false )
   (dimension-count [m dimension-number] (let [[r c] (size m)]
                                           (condp = dimension-number
                                             0 r
@@ -1300,7 +1309,11 @@ Uses the same algorithm as java's default Random constructor."
   mp/PIndexedAccess
   (get-1d [m i] (get m i))
   (get-2d [m row column] (get m row column))
-  (get-nd [m indexes] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+  (get-nd [m indexes] 
+    (let [dims (count indexes)]
+      (if (== dims 2)
+        (mp/get-2d m (first indexes) (second indexes))
+        (throw (UnsupportedOperationException. "Only 2-d get on matrices is supported.")))))
 
   mp/PIndexedSetting
   (set-1d [m i x]
@@ -1310,7 +1323,10 @@ Uses the same algorithm as java's default Random constructor."
            (matrix (set (matrix m) i 0 x)))))
 
   (set-2d [m row column x] (matrix (set (matrix m) row column x)))
-  (set-nd [m indexes x] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+  (set-nd [m indexes x] 
+    (if (== (count indexes) 2)
+        (mp/set-2d m (first indexes) (second indexes) x)
+        (throw (UnsupportedOperationException. "Only 2-d set on matrices is supported."))))
   (is-mutable? [m] false)
 
   mp/PMatrixCloning
@@ -1402,8 +1418,8 @@ Uses the same algorithm as java's default Random constructor."
   (get-slice [m dimension i]
     (condp = dimension
       0 (slice m i _)
-      1 (slice m _ i))
-    (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+      1 (slice m _ i)
+      (throw (UnsupportedOperationException. "Clatrix only support 2-d"))))
 
   mp/PSliceSeq
   ;; API wants a seq of Matrices
