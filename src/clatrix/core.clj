@@ -87,6 +87,64 @@
 
   clojure.lang.Sequential)
 
+;; a deftype that represents a 1D vector. Uses a N*1 JBlas matrix internally
+(deftype Vector [^DoubleMatrix me ^clojure.lang.IPersistentMap metadata]
+  Object
+  (toString [mat]
+    (str (list `matrix
+               (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat))))))))
+
+  clojure.lang.IObj
+
+  (withMeta [this metadata]
+    (Matrix. me metadata))
+  (meta [this]
+    metadata)
+
+  clojure.lang.ISeq
+
+  (equiv [this that]
+    (cond
+     (matrix? that) (.equals (.me this) (.me that))
+     (coll? that) (and (= (count (flatten this)) (count (flatten that)))
+                       (every? true? (clojure.core/map #(== %1 %2) (flatten this) (flatten that))))
+     (number? that) (and (= [1 1] (size this)) (= that (get this 0 0)))
+     :else (.equals (.me this) that)))
+
+  (more [this]
+    (if-let [nxt (next this)]
+      nxt
+      (matrix [])))
+
+  (cons [this x]
+    (cond
+     (matrix? x)  (vstack this x)
+     (and (coll? x) (number? (first x))) (vstack this (matrix (vector x)))
+     :else (vstack this (matrix x))))
+
+  (seq [this]
+    "Return a seq of rows for a 2D or a seq of entries for a 1D matrix"
+    (if (vector-matrix? this)
+      (seq (.toArray (.me this)))
+      (clojure.core/map matrix (row-list (.me this)))))
+
+  (first [this]
+    (first (seq this)))
+
+  (next [this]
+    (next (seq this)))
+
+  (empty [this]
+    (matrix []))
+
+  clojure.lang.Counted  ;; The number of rows for a matrix, or elems for a vector
+  (count [this]
+    (if (vector-matrix? this)
+      (clojure.core/* (nrows this) (ncols this))
+      (nrows this)))
+
+  clojure.lang.Sequential)
+
 (defn me [^Matrix mat]
   (.me mat))
 
@@ -115,8 +173,16 @@
 ;;; doubles. The object `Matrix` is our particular instantiation.
 
 (defn matrix?
-  "`matrix?` tests whether an object is a `Matrix` object."
+  "`matrix?` tests whether an object is a clatrix `Matrix` object."
   [m] (instance? Matrix m))
+
+(defn vec?
+  "`vec?` tests whether an object is a clatrix `Vector` object."
+  [m] (instance? Vector m))
+
+(defn clatrix?
+  "Tests whether an object is a clatrix Matrix or Vector"
+  [m] (or (vec? m) (matrix? m))) 
 
 ;;; The most fundamental question about a matrix is its size. This
 ;;; also defines a number of other ideas such as whether a matrix is a
