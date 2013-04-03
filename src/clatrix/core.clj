@@ -1,8 +1,8 @@
 (ns clatrix.core
   (:refer-clojure :exclude [get set map-indexed map rand vector? + - * pp vector])
   (:use [slingshot.slingshot :only [throw+]])
-  (:require [core.matrix.protocols :as mp]
-            [core.matrix.implementations :as imp])
+  (:require [clojure.core.matrix.protocols :as mp]
+            [clojure.core.matrix.implementations :as imp])
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
             Decompose Decompose$LUDecomposition Eigen Solve Geometry
             Singular MatrixFunctions]
@@ -25,66 +25,63 @@
 ;;; and to hide the underlying Java methods. It is not hard to access these
 ;;; Java methods (they're available through the `me` function), but their use is dissuaded.
 
-(declare get permute size matrix matrix? row? nrows ncols vstack vector)
+(declare get permute size matrix matrix? row? nrows ncols vstack vector-matrix? dotom vector)
 
-(deftype Matrix [^DoubleMatrix me ^Boolean vector? ^clojure.lang.IPersistentMap metadata]
+(defn row-list [^DoubleMatrix m]
+  (.rowsAsList m))
+
+(deftype Matrix [^DoubleMatrix me ^clojure.lang.IPersistentMap metadata]
   Object
   (toString [^Matrix mat]
     (str (list `matrix
                (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat))))))))
 
   clojure.lang.IObj
+
   (withMeta [this metadata]
-    (Matrix. me vector? metadata))
+    (Matrix. me metadata))
   (meta [this]
     metadata)
 
   clojure.lang.ISeq
+
   (equiv [this that]
     (cond
-      (matrix? that) (.equals (.me this) (.me that))
-      (coll? that) (and (= (count this) (count that))
-                        (every? true? (clojure.core/map #(== %1 %2)
-                                                        (flatten this)
-                                                        (flatten that))))
-      (number? that) (and (= [1 1] (size this)) (= that (get this 0 0)))
-      (matrix that) (.equals (.me this) (.me (matrix that)))  ;; attempt coercion. slow
-      :else (.equals (.me this) that)))
-  (first [this]
-    (let [[r c] (size this)]
-      (cond
-        (or (zero? r) (zero? c)) nil
-        (and vector? (or (= r 1) (= c 1))) (get this 0 0)
-        :else (let [out (get this 0 (range c))]
-                (if (number? out)
-                  (matrix (clojure.core/vector out))
-                  out)))))
+     (matrix? that) (.equals (.me this) (.me that))
+     (coll? that) (and (= (count (flatten this)) (count (flatten that)))
+                       (every? true? (clojure.core/map #(== %1 %2) (flatten this) (flatten that))))
+     (number? that) (and (= [1 1] (size this)) (= that (get this 0 0)))
+     :else (.equals (.me this) that)))
+
   (more [this]
     (if-let [nxt (next this)]
       nxt
       (matrix [])))
+
   (cons [this x]
     (cond
-      (matrix? x)  (vstack this x)
-      (and (coll? x) (number? (first x))) (vstack this (matrix (clojure.core/vector x)))
-      :else (vstack this (matrix x))))
+     (matrix? x)  (vstack this x)
+     (and (coll? x) (number? (first x))) (vstack this (matrix (vector x)))
+     :else (vstack this (matrix x))))
+
   (seq [this]
-    (let [[r c] (size this)]
-      (when-not (or (zero? r) (zero? c))
-        (Matrix. me vector? nil))))
+    "Return a seq of rows for a 2D or a seq of entries for a 1D matrix"
+    (if (vector-matrix? this)
+      (seq (.toArray (.me this)))
+      (clojure.core/map matrix (row-list (.me this)))))
+
+  (first [this]
+    (first (seq this)))
+
   (next [this]
-    (let [[r c] (size this)]
-      (cond
-        (and vector? (= 1 c) (> r 1)) (matrix (.me (get this (range 1 r) 0)) true nil)
-        (and vector? (= 1 r) (> c 1)) (matrix (.me (get this 0 (range 1 c))) true nil)
-        (and (not vector?) (> r 1)) (matrix (.me (get this (range 1 r) (range c))) false nil)
-        :else nil)))
+    (next (seq this)))
+
   (empty [this]
     (matrix []))
 
-  clojure.lang.Counted
+  clojure.lang.Counted  ;; The number of rows for a matrix, or elems for a vector
   (count [this]
-    (if vector?
+    (if (vector-matrix? this)
       (clojure.core/* (nrows this) (ncols this))
       (nrows this)))
 
@@ -129,7 +126,10 @@
 (promote-mfun* defn ncols .columns)
 (promote-mfun* defn nrows .rows)
 (defn size    [^Matrix m] [(nrows m) (ncols m)])
-(defn vector? [^Matrix m] (.vector? m))
+(defn vector-matrix?
+  "Is m nx1 or 1xn"
+  [^Matrix m]
+  (or (.isRowVector (.me m)) (.isColumnVector (.me m))))
 (defn row?    [^Matrix m] (== 1 (first (size m))))
 (defn column? [^Matrix m] (== 1 (second (size m))))
 (defn square? [^Matrix m] (reduce == (size m)))
@@ -193,11 +193,10 @@
   elements in row-major order. Treats `vector?` type matrices
   differently, though, flattening the return seq to a single vector."
   [^Matrix m]
-  (if (vector? m)
+  (if (vector-matrix? m)
     (vec (dotom .toArray m))
     (dense m)))
 
-;;; # Matrix creation
 ;;;
 ;;; Matrices can be created from a number of simple specifications,
 ;;; such as (1) direct coercions, (2) element-constant matrices and
@@ -218,34 +217,36 @@
   identical or an error is throw."
   (fn [m & args] (class m)))
 
+
 (defmethod matrix ::matrix
-  ([^Matrix m & _] m))
+  ([^Matrix m & _]
+     (Matrix. (.dup (.me m)) (.meta m))))
 
 (defmethod matrix ::double-matrix
   ([^DoubleMatrix x]
-   (matrix x (.isVector x) nil))
-  ([^DoubleMatrix x vector? meta]
-   (Matrix. x vector? meta)))
+   (matrix x nil))
+  ([^DoubleMatrix x meta]
+   (Matrix. x meta)))
 
 (defmethod matrix ::collection
   ([s]
-     (matrix s false nil))
-  ([seq-of-seqs vector? meta-args]
-     (if (number? (first seq-of-seqs))
-       (matrix (DoubleMatrix. (into-array Double/TYPE (clojure.core/map double seq-of-seqs)))
-               vector?
-               meta-args)
+     (matrix s nil))
+  ([seq-of-seqs meta-args]
+     (if (empty? seq-of-seqs)
+       (Matrix. DoubleMatrix/EMPTY meta-args)
+       (if (number? (first seq-of-seqs))
+         (matrix (DoubleMatrix. (into-array Double/TYPE (clojure.core/map double seq-of-seqs)))
+                 meta-args)
          (let [lengths (clojure.core/map count seq-of-seqs)
                flen    (first lengths)]
            (cond
-            (or (= (count lengths) 0) (some zero? lengths)) (matrix (DoubleMatrix. 0 0) vector? meta-args)
+            (or (= (count lengths) 0) (some zero? lengths)) (matrix (DoubleMatrix. 0 0) meta-args)
             (every? (partial = flen) lengths)
             (matrix
              (DoubleMatrix.
               ^"[[D" (into-array (clojure.core/map #(into-array Double/TYPE (clojure.core/map double %)) seq-of-seqs)))
-             vector?
              meta-args)
-            :else (throw+ {:error "Cannot create a ragged matrix."}))))))
+            :else (throw+ {:error "Cannot create a ragged matrix."})))))))
 
 (defmethod matrix java.lang.Double
   [x]
@@ -265,7 +266,7 @@
      (vector m nil))
   ([m meta-map]
      {:pre [(= (count m) (count (flatten m)))]}
-      (matrix m true meta-map)))
+      (matrix m meta-map)))
 
 (defn diag
   "`diag` creates a diagonal matrix from a seq of numbers or extracts
@@ -402,9 +403,7 @@ Uses the same algorithm as java's default Random constructor."
 (defn t
   "`(t A)` is the transpose of `A`."
   [^Matrix mat]
-  (if (vector? mat)
-    mat
-    (matrix (dotom .transpose mat))))
+  (matrix (dotom .transpose mat)))
 
 (defn hstack
   "`hstack` concatenates a number of matrices by aligning them
@@ -1082,7 +1081,6 @@ Uses the same algorithm as java's default Random constructor."
 ;;; REPL).
 
 ;;; TODO (This function is pretty ugly...)
-
 (defmethod print-method Matrix [mat ^java.io.Writer w]
   (let [[nbits prec] [3 2]
         [n m] (size mat)
@@ -1094,8 +1092,6 @@ Uses the same algorithm as java's default Random constructor."
         colset (if (< m (clojure.core/* nbits 2))
                  (range m)
                  (concat (range nbits) (range (clojure.core/- m nbits) m)))
-        submat (apply hstack (cols (apply vstack (rows mat rowset)) colset))
-        [n m] (size submat)
         fmt (str "% ." prec "e ")
         header (apply format " A %dx%d matrix\n" (size mat))]
     ;; Print the header
@@ -1103,39 +1099,43 @@ Uses the same algorithm as java's default Random constructor."
     (.write w " ")
     (doseq [i (range (dec (count header)))] (.write w "-"))
     (.write w "\n")
-    ;; Print the matrix
-    (if small-rows
-      (doseq [i (range n)]
-        (if small-cols
-          (doseq [j (range m)]
-            (.write w (format fmt (slice submat i j))))
-          (do (doseq [j (range nbits)]
-                (print (format fmt (slice submat i j))))
-            (.write w " . ")
-            (doseq [j (range nbits (clojure.core/* 2 nbits))]
-              (.write w (format fmt (slice submat i j))))))
-        (.write w "\n"))
-      (do (doseq [i (range nbits)]
+    (if (zero? (* n m))
+      mat
+       (let [ submat (apply hstack (cols (apply vstack (rows mat rowset)) colset))
+            [n m] (size submat)]
+        ;; Print the matrix
+        (if small-rows
+          (doseq [i (range n)]
             (if small-cols
               (doseq [j (range m)]
                 (.write w (format fmt (slice submat i j))))
               (do (doseq [j (range nbits)]
-                    (.write w (format fmt (slice submat i j))))
-                (.write w " . ")
-                (doseq [j (range nbits (clojure.core/* 2 nbits))]
-                  (.write w (format fmt (slice submat i j))))))
+                    (print (format fmt (slice submat i j))))
+                  (.write w " . ")
+                  (doseq [j (range nbits (clojure.core/* 2 nbits))]
+                    (.write w (format fmt (slice submat i j))))))
             (.write w "\n"))
-        (.write w " ... \n")
-        (doseq [i (range nbits (clojure.core/* 2 nbits))]
-          (if small-cols
-            (doseq [j (range m)]
-              (.write w (format fmt (slice submat i j))))
-            (do (doseq [j (range nbits)]
-                  (.write w (format fmt (slice submat i j))))
-              (.write w " . ")
-              (doseq [j (range nbits (clojure.core/* 2 nbits))]
-                (.write w (format fmt (slice submat i j))))))
-          (.write w "\n"))))))
+          (do (doseq [i (range nbits)]
+                (if small-cols
+                  (doseq [j (range m)]
+                    (.write w (format fmt (slice submat i j))))
+                  (do (doseq [j (range nbits)]
+                        (.write w (format fmt (slice submat i j))))
+                      (.write w " . ")
+                      (doseq [j (range nbits (clojure.core/* 2 nbits))]
+                        (.write w (format fmt (slice submat i j))))))
+                (.write w "\n"))
+              (.write w " ... \n")
+              (doseq [i (range nbits (clojure.core/* 2 nbits))]
+                (if small-cols
+                  (doseq [j (range m)]
+                    (.write w (format fmt (slice submat i j))))
+                  (do (doseq [j (range nbits)]
+                        (.write w (format fmt (slice submat i j))))
+                      (.write w " . ")
+                      (doseq [j (range nbits (clojure.core/* 2 nbits))]
+                        (.write w (format fmt (slice submat i j))))))
+                (.write w "\n"))))))))
 
 
 ;;;  # Native math operators
@@ -1221,12 +1221,14 @@ Uses the same algorithm as java's default Random constructor."
     (<= dimensions 2))
 
   mp/PDimensionInfo
-  (dimensionality [m] (cond (some zero? (size m)) 0
-                            (vector? m)           2
-                            :else                 2))
-  (get-shape  [m] (filter (partial < 1) (size m)))
+  (dimensionality [m] 2 #_(cond (some zero? (size m)) 0
+                                (vector? m)           1
+                                :else                 2))
+  (get-shape  [m] (size m) #_(if (vector? m)
+                               [(max (nrows m) (ncols m))]
+                               (size m)))
   (is-scalar? [m] (= [1 1] (size m)))
-  (is-vector? [m] (.vector? m))
+  (is-vector? [m] false #_(.vector? m))
   (dimension-count [m dimension-number] (let [[r c] (size m)]
                                           (condp = dimension-number
                                             0 r
@@ -1239,11 +1241,13 @@ Uses the same algorithm as java's default Random constructor."
   (get-nd [m indexes] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
 
   mp/PIndexedSetting
-  (set-1d [m i x] (cond
-                      (and (vector? m) (row? m)) (set m 0 i x)
-                      (and (vector? m) (column? m)) (set m i 0 x)
-                      :else (throw (IllegalArgumentException.  "Not a vector"))))
-  (set-2d [m row column x] (set m row column x))
+  (set-1d [m i x]
+    ;; We don't know the 1*x or x*1, so just guess. Yuck
+    (try (matrix (set (matrix m) 0 i x))
+         (catch Throwable t
+           (matrix (set (matrix m) i 0 x)))))
+
+  (set-2d [m row column x] (matrix (set (matrix m) row column x)))
   (set-nd [m indexes x] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
   (is-mutable? [m] false)
 
@@ -1255,6 +1259,10 @@ Uses the same algorithm as java's default Random constructor."
   mp/PTypeInfo
   (element-type [m]
     java.lang.Double)
+
+  mp/PZeroDimensionAccess
+  (get-0d [m]
+    (first m))
 
   mp/PSpecialisedConstructors
   (identity-matrix [m dims]
@@ -1299,12 +1307,12 @@ Uses the same algorithm as java's default Random constructor."
   mp/PVectorOps
   (vector-dot [a b]
     (dot a b))
-  (length [a]
-    (.length (me a)))
   (length-squared [a]
-    (let [l (.length (me a))] (clojure.core/* l l)))
+    (* (norm a) (norm a)))
+  (length [a]
+    (norm a))
   (normalise [a]
-    (div a (sum a)))
+    (normalize a))
 
   mp/PMatrixOps
   (trace [m]
@@ -1335,13 +1343,20 @@ Uses the same algorithm as java's default Random constructor."
       1 (slice m _ i))
     (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
 
+  mp/PSliceSeq
+  ;; API wants a seq of Matrices
+  (get-major-slice-seq [m]
+    (clojure.core/map #(slice m % _) (range (nrows m))))
+
   mp/PFunctionalOperations
   (element-seq [m]
     (flatten m))
-  (element-map [m f]
-    (map f m))
-  (element-map [m f a]
-    (map f m a))
+  (element-map
+    ([m f]
+       (clojure.core/map f (flatten m)))
+    ([m f a]
+       (clojure.core/map f (flatten m) a)))
+
   (element-map! [m f]
     (map f m))
   (element-reduce [m f]
