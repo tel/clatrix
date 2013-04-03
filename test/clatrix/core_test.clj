@@ -121,7 +121,6 @@
 
 ;; equality
 (expect R (range m))
-(expect (double m) (c/matrix [m]))
 
 ;; clojure sequence methods
 (expect (c/matrix [(range 1 m)]) (rest R))

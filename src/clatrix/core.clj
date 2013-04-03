@@ -25,7 +25,7 @@
 ;;; and to hide the underlying Java methods. It is not hard to access these
 ;;; Java methods (they're available through the `me` function), but their use is dissuaded.
 
-(declare get permute size matrix matrix? row? nrows ncols vstack vector-matrix? dotom vector)
+(declare get permute size matrix matrix? row? nrows ncols vstack vector-matrix? dotom vector vec?)
 
 (defn row-list [^DoubleMatrix m]
   (.rowsAsList m))
@@ -50,7 +50,6 @@
      (matrix? that) (.equals (.me this) (.me that))
      (coll? that) (and (= (count (flatten this)) (count (flatten that)))
                        (every? true? (clojure.core/map #(== %1 %2) (flatten this) (flatten that))))
-     (number? that) (and (= [1 1] (size this)) (= that (get this 0 0)))
      :else (.equals (.me this) that)))
 
   (more [this]
@@ -87,7 +86,7 @@
 
   clojure.lang.Sequential)
 
-;; a deftype that represents a 1D vector. Uses a N*1 JBlas matrix internally
+;; a deftype that represents a 1D vector. Uses a N*1 JBlas column matrix internally
 (deftype Vector [^DoubleMatrix me ^clojure.lang.IPersistentMap metadata]
   Object
   (toString [mat]
@@ -105,10 +104,9 @@
 
   (equiv [this that]
     (cond
-     (matrix? that) (.equals (.me this) (.me that))
-     (coll? that) (and (= (count (flatten this)) (count (flatten that)))
-                       (every? true? (clojure.core/map #(== %1 %2) (flatten this) (flatten that))))
-     (number? that) (and (= [1 1] (size this)) (= that (get this 0 0)))
+     (vec? that) (.equals (.me this) (.me that))
+     (coll? that) (and (= (count this) (count that))
+                       (every? true? (clojure.core/map #(== %1 %2) this that)))
      :else (.equals (.me this) that)))
 
   (more [this]
