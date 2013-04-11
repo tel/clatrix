@@ -10,5 +10,5 @@
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [slingshot "0.10.3"]
                  [org.jblas/jblas "1.2.3"]
-                 [net.mikera/core.matrix "0.4.1"]]
+                 [net.mikera/core.matrix "0.5.0"]]
   :profiles {:dev {:dependencies [[expectations "1.4.16"]]}})
