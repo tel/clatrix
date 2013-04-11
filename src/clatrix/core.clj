@@ -25,7 +25,7 @@
 ;;; and to hide the underlying Java methods. It is not hard to access these
 ;;; Java methods (they're available through the `me` function), but their use is dissuaded.
 
-(declare get permute size matrix matrix? row? nrows ncols vstack vector-matrix? dotom vector)
+(declare get permute size matrix matrix? row? nrows ncols vstack vector-matrix? dotom vector vec?)
 
 (defn row-list [^DoubleMatrix m]
   (.rowsAsList m))
@@ -50,7 +50,6 @@
      (matrix? that) (.equals (.me this) (.me that))
      (coll? that) (and (= (count (flatten this)) (count (flatten that)))
                        (every? true? (clojure.core/map #(== %1 %2) (flatten this) (flatten that))))
-     (number? that) (and (= [1 1] (size this)) (= that (get this 0 0)))
      :else (.equals (.me this) that)))
 
   (more [this]
@@ -87,8 +86,63 @@
 
   clojure.lang.Sequential)
 
-(defn me [^Matrix mat]
-  (.me mat))
+;; a deftype that represents a 1D vector. Uses a N*1 JBlas column matrix internally
+(deftype Vector [^DoubleMatrix me ^clojure.lang.IPersistentMap metadata]
+  Object
+  (toString [mat]
+    (str (list `matrix
+               (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat))))))))
+
+  clojure.lang.IObj
+
+  (withMeta [this metadata]
+    (Matrix. me metadata))
+  (meta [this]
+    metadata)
+
+  clojure.lang.ISeq
+
+  (equiv [this that]
+    (cond
+     (vec? that) (.equals (.me this) (.me that))
+     (coll? that) (and (= (count this) (count that))
+                       (every? true? (clojure.core/map #(== %1 %2) this that)))
+     :else (.equals (.me this) that)))
+
+  (more [this]
+    (if-let [nxt (next this)]
+      nxt
+      (matrix [])))
+
+  (cons [this x]
+    (cond
+     (matrix? x)  (vstack this x)
+     (and (coll? x) (number? (first x))) (vstack this (matrix (vector x)))
+     :else (vstack this (matrix x))))
+
+  (seq [this]
+    "Return a seq of entries for a 1D matrix"
+    (seq (.toArray (.me this))))
+
+  (first [this]
+    (first (seq this)))
+
+  (next [this]
+    (next (seq this)))
+
+  (empty [this]
+    (matrix []))
+
+  clojure.lang.Counted  ;; The number of rows for a matrix, or elems for a vector
+  (count [this]
+    (nrows this))
+
+  clojure.lang.Sequential)
+
+(defn me [mat]
+  (if (vec? mat) 
+    (.me ^Vector  mat)
+    (.me ^Matrix  mat)))
 
 (defmacro dotom [name m & args]
   `(~name ^DoubleMatrix (me ~m) ~@args))
@@ -115,8 +169,16 @@
 ;;; doubles. The object `Matrix` is our particular instantiation.
 
 (defn matrix?
-  "`matrix?` tests whether an object is a `Matrix` object."
-  [m] (isa? (class m) Matrix))
+  "`matrix?` tests whether an object is a clatrix `Matrix` object."
+  [m] (instance? Matrix m))
+
+(defn vec?
+  "`vec?` tests whether an object is a clatrix `Vector` object."
+  [m] (instance? Vector m))
+
+(defn clatrix?
+  "Tests whether an object is a clatrix Matrix or Vector"
+  [m] (or (vec? m) (matrix? m))) 
 
 ;;; The most fundamental question about a matrix is its size. This
 ;;; also defines a number of other ideas such as whether a matrix is a
@@ -125,13 +187,17 @@
 ;;; order.
 (promote-mfun* defn ncols .columns)
 (promote-mfun* defn nrows .rows)
-(defn size    [^Matrix m] [(nrows m) (ncols m)])
+(defn size [m] 
+  (cond 
+    (matrix? m) [(nrows m) (ncols m)]
+    (vec? m) [(nrows m)]
+    :else (throw (IllegalArgumentException. "Not a Clatrix Vector or Matrix"))))
 (defn vector-matrix?
   "Is m nx1 or 1xn"
   [^Matrix m]
   (or (.isRowVector (.me m)) (.isColumnVector (.me m))))
-(defn row?    [^Matrix m] (== 1 (first (size m))))
-(defn column? [^Matrix m] (== 1 (second (size m))))
+(defn row?    [m] (and (matrix? m) (== 1 (first (size m)))))
+(defn column? [m] (and (matrix? m) (== 1 (second (size m)))))
 (defn square? [^Matrix m] (reduce == (size m)))
 
 (defn- int-arraytise
@@ -166,8 +232,9 @@
          out
          (matrix out)))))
 
-(defn set [^Matrix m ^long r ^long c ^double e]
-  (dotom .put m r c e))
+(defn set 
+  ([^Matrix m ^long r ^long c ^double e]
+    (dotom .put m r c e)))
 
 ;;; Already this is sufficient to get some algebraic matrix
 ;;; properties, such as
@@ -192,8 +259,8 @@
   "`as-vec` converts a matrix object into a seq-of-seqs of its
   elements in row-major order. Treats `vector?` type matrices
   differently, though, flattening the return seq to a single vector."
-  [^Matrix m]
-  (if (vector-matrix? m)
+  [m]
+  (if (or (vec? m) (vector-matrix? m))
     (vec (dotom .toArray m))
     (dense m)))
 
@@ -205,7 +272,7 @@
 (defn column  ;; TODO remove from api
   "`column` coerces a seq of numbers to a column `Matrix`."
   [^doubles seq]
-  (vector seq))
+  (matrix seq))
 
 (derive java.util.Collection ::collection)
 (derive DoubleMatrix ::double-matrix)
@@ -258,15 +325,14 @@
 
 (defmethod matrix :default
   [m & _]
-  nil)
+  (matrix (mp/convert-to-nested-vectors m)))
 
 ;; Constructor for vector type.
 (defn vector
   ([m]
-     (vector m nil))
+    (vector m nil))
   ([m meta-map]
-     {:pre [(= (count m) (count (flatten m)))]}
-      (matrix m meta-map)))
+    (Vector. (me (matrix m)) meta-map)))
 
 (defn diag
   "`diag` creates a diagonal matrix from a seq of numbers or extracts
@@ -650,6 +716,19 @@ Uses the same algorithm as java's default Random constructor."
   [^Matrix matrix rowspec colspec & values?]
   `(as-vec ~(apply slicer matrix rowspec colspec values?)))
 
+(defn slice-row
+  "Slices a matrix to produce a vector representing a single row."
+  ([^Matrix m rownum]
+    (let [rv (.getRow (.me m) (int rownum))]
+      (.reshape rv (.columns rv) 1)
+      (Vector. rv nil)))) 
+
+(defn slice-column
+  "Slices a matrix to produce a vector representing a single row."
+  ([^Matrix m colnum]
+    (let [cv (.getColumn (.me m) (int colnum))]
+      (Vector. cv nil)))) 
+
 ;;; # Hinting
 ;;;
 ;;; Many more complex matrix operations can be specialized for certain
@@ -761,8 +840,10 @@ Uses the same algorithm as java's default Random constructor."
 
 (defn ereduce
   "Quick and dirty reduce."
-  [fun ^Matrix mat]
-  (reduce fun (flatten mat)))
+  ([fun ^Matrix mat]
+    (reduce fun (flatten mat)))
+  ([fun init ^Matrix mat]
+    (reduce fun init (flatten mat))))
 
 
 ;;; # Linear algebra
@@ -796,6 +877,8 @@ Uses the same algorithm as java's default Random constructor."
                  (throw+ {:exception "Matrices of different sizes cannot be summed."
                           :asize (size a)
                           :bsize (size b)}))
+               (and (vec? a) (vec? b))
+                 (vector (dotom .add a ^DoubleMatrix (me b)))
                (matrix? a) (matrix
                              (dotom .add a (double b)))
                (matrix? b) (matrix
@@ -812,10 +895,15 @@ Uses the same algorithm as java's default Random constructor."
                  (throw+ {:exception "Matrix products must have compatible sizes."
                           :a-cols (ncols a)
                           :b-rows (nrows b)}))
-               (matrix? a) (matrix
-                             (dotom .mmul a (double b)))
-               (matrix? b) (matrix
-                             (dotom .mmul b (double a)))
+               (matrix? a) 
+                 (if (vec? b) 
+                   (Vector. (dotom .mmul a ^DoubleMatrix (me b)) nil)
+                   (matrix (dotom .mmul a (double b))))
+               (matrix? b) 
+                 (if (vec? a) 
+                   (Vector. (.transpose 
+                              (.mmul (.transpose ^DoubleMatrix (me a)) ^DoubleMatrix (me b))) nil)
+                   (matrix (dotom .mmul b (double a))))
                :else       (clojure.core/* a b)))
   ([a b & as] (reduce * a (cons b as))))
 
@@ -844,11 +932,13 @@ Uses the same algorithm as java's default Random constructor."
   constant matrices). All the matrices must have the same size."
   ([a] (* -1 a))
   ([a b] (cond (and (matrix? a) (matrix? b))
-               (if (= (size a) (size b))
-                 (matrix (dotom .sub a ^DoubleMatrix (me b)))
-                 (throw+ {:exception "Matrices of different sizes cannot be differenced."
-                          :asize (size a)
-                          :bsize (size b)}))
+                 (if (= (size a) (size b))
+                   (matrix (dotom .sub a ^DoubleMatrix (me b)))
+                   (throw+ {:exception "Matrices of different sizes cannot be differenced."
+                            :asize (size a)
+                            :bsize (size b)}))
+               (and (vec? a) (vec? b))
+                 (vector (dotom .sub a ^DoubleMatrix (me b)))
                (matrix? a) (matrix
                              (dotom .sub a (double b)))
                (matrix? b) (matrix
@@ -1198,6 +1288,32 @@ Uses the same algorithm as java's default Random constructor."
 
 ;;; TODO: pow is more complex and not currenty supported
 
+(defn- make-new-matrix 
+  "Creates a new matrix filled with zeros"
+  ([shape]
+    (let [dims (count shape)]
+      (cond 
+        (== dims 0) 0
+        (== dims 1) (vector (repeat (first shape) 0))
+        (== dims 2) (zeros (first shape) (second shape))
+        :else (throw (UnsupportedOperationException. "Only 1-d vectors or 2-d matrices are supported."))))))
+
+
+(defn- construct-clatrix [m]
+  (case (mp/dimensionality m)
+        0 (double m)
+        1 (vector m)
+        2 (matrix m)
+        (throw (UnsupportedOperationException. "Only 1-d vectors or 2-d matrices are supported."))))
+
+
+(defn- to-matrix
+  "Coerces to a clatrix matrix or vector."
+  ([m]
+    (if (clatrix? m)
+      m
+      (construct-clatrix m))))
+
 ;; ---------------------------------------------------------------------------;;;
 ;;; # matrix-api
 ;;;
@@ -1210,35 +1326,35 @@ Uses the same algorithm as java's default Random constructor."
   (implementation-key [m]
     :clatrix)
   (construct-matrix   [m data]
-    (matrix data))
+    (construct-clatrix data))
   (new-vector         [m length]
-    (vector (repeat length 0)))
+    (make-new-matrix [length]))
   (new-matrix         [m rows columns]
-    (zeros rows columns))
+    (make-new-matrix [rows columns]))
   (new-matrix-nd      [m shape]
-    (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+    (make-new-matrix shape))
   (supports-dimensionality? [m dimensions]
     (<= dimensions 2))
 
   mp/PDimensionInfo
-  (dimensionality [m] 2 #_(cond (some zero? (size m)) 0
-                                (vector? m)           1
-                                :else                 2))
-  (get-shape  [m] (size m) #_(if (vector? m)
-                               [(max (nrows m) (ncols m))]
-                               (size m)))
-  (is-scalar? [m] (= [1 1] (size m)))
-  (is-vector? [m] false #_(.vector? m))
+  (dimensionality [m] 2)
+  (get-shape  [m] (size m))
+  (is-scalar? [m] false)
+  (is-vector? [m] false )
   (dimension-count [m dimension-number] (let [[r c] (size m)]
                                           (condp = dimension-number
                                             0 r
                                             1 c
-                                            nil)))
+                                            (throw (IllegalArgumentException. "Matrix only has dimensions 0 and 1")))))
 
   mp/PIndexedAccess
   (get-1d [m i] (get m i))
   (get-2d [m row column] (get m row column))
-  (get-nd [m indexes] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+  (get-nd [m indexes] 
+    (let [dims (count indexes)]
+      (if (== dims 2)
+        (mp/get-2d m (first indexes) (second indexes))
+        (throw (UnsupportedOperationException. "Only 2-d get on matrices is supported.")))))
 
   mp/PIndexedSetting
   (set-1d [m i x]
@@ -1248,7 +1364,10 @@ Uses the same algorithm as java's default Random constructor."
            (matrix (set (matrix m) i 0 x)))))
 
   (set-2d [m row column x] (matrix (set (matrix m) row column x)))
-  (set-nd [m indexes x] (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+  (set-nd [m indexes x] 
+    (if (== (count indexes) 2)
+        (mp/set-2d m (first indexes) (second indexes) x)
+        (throw (UnsupportedOperationException. "Only 2-d set on matrices is supported."))))
   (is-mutable? [m] false)
 
   mp/PMatrixCloning
@@ -1258,11 +1377,7 @@ Uses the same algorithm as java's default Random constructor."
   ;;  Optional protocols
   mp/PTypeInfo
   (element-type [m]
-    java.lang.Double)
-
-  mp/PZeroDimensionAccess
-  (get-0d [m]
-    (first m))
+    java.lang.Double/TYPE)
 
   mp/PSpecialisedConstructors
   (identity-matrix [m dims]
@@ -1272,7 +1387,7 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PCoercion
   (coerce-param [m param]
-    (matrix param))
+    (to-matrix param))
 
   mp/PConversion
   (convert-to-nested-vectors [m]
@@ -1280,11 +1395,150 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PMatrixEquality
   (matrix-equals [a b]
-    (.equiv a b))
+    (.equiv a (to-matrix b)))
 
   mp/PMatrixMultiply
   (matrix-multiply [m a]
-    (* (matrix m) (matrix a)))
+    (* (matrix m) (to-matrix a)))
+  (element-multiply [m a]
+    (mult (matrix m) a))
+
+  mp/PVectorTransform
+  (vector-transform [m v]
+    (* m v))
+
+  mp/PMatrixScaling
+  (scale [m a]
+    (mult (matrix m) a))
+  (pre-scale [m a]
+    (mult (matrix m) a))
+
+  mp/PMatrixAdd
+  (matrix-add [m a]
+    (+ m a))
+  (matrix-sub [m a]
+    (- m a))
+
+  mp/PMatrixOps
+  (trace [m]
+    (trace m))
+  (determinant [m]
+    (det m))
+  (inverse [m]
+    (i m))
+  (negate [m]
+    (* -1 m))
+  (transpose [m]
+    (t m))
+
+  mp/PSummable
+    (element-sum [m]
+      (sum m))
+
+  mp/PMatrixSlices
+  (get-row [m i]
+    (slice-row m i))
+  (get-column [m i]
+    (slice-column m i))
+  (get-major-slice [m i]
+    (slice-row m i))
+  (get-slice [m dimension i]
+    (condp = dimension
+      0 (slice-row m i)
+      1 (slice-column m i)
+      (throw (UnsupportedOperationException. "Clatrix only support 2-d"))))
+
+  mp/PSliceSeq
+  ;; API wants a seq of Matrices
+  (get-major-slice-seq [m]
+    (clojure.core/map #(slice-row m %) (range (nrows m))))
+
+  mp/PFunctionalOperations
+  (element-seq [m]
+    (flatten m))
+  (element-map
+    ([m f]
+       (clojure.core/map f (flatten m)))
+    ([m f a]
+       (clojure.core/map f (flatten m) a)))
+
+  (element-map! 
+    ([m f] (map f m)))
+  (element-reduce 
+    ([m f]
+      (ereduce f m))
+    ([m f init ]
+      (ereduce f init m))))
+
+(extend-type Vector
+  mp/PImplementation
+  (implementation-key [m]
+    :clatrix)
+  (construct-matrix   [m data]
+    (construct-clatrix data))
+  (new-vector         [m length]
+    (make-new-matrix [length]))
+  (new-matrix         [m rows columns]
+    (make-new-matrix [rows columns]))
+  (new-matrix-nd      [m shape]
+    (make-new-matrix shape))
+  (supports-dimensionality? [m dimensions]
+    (<= dimensions 2))
+
+  mp/PDimensionInfo
+  (dimensionality [m] 1)
+  (get-shape  [m] [(first (size m))])
+  (is-scalar? [m] false)
+  (is-vector? [m] true )
+  (dimension-count [m dimension-number] (let [[r c] (size m)]
+                                          (condp = dimension-number
+                                            0 r
+                                            (throw (IllegalArgumentException. "Vector only has dimension 0")))))
+
+  mp/PIndexedAccess
+  (get-1d [m i] (get m i))
+  (get-2d [m row column] (get m row column))
+  (get-nd [m indexes] 
+    (let [dims (count indexes)]
+      (if (== dims 1)
+        (mp/get-1d m (first indexes))
+        (throw (UnsupportedOperationException. "Only 1-d get on vectors is supported.")))))
+
+  mp/PIndexedSetting
+  (set-1d [m i x]
+    ;; We don't know the 1*x or x*1, so just guess. Yuck
+    (vector (set (matrix m) i 0 x)))
+
+  (set-nd [m indexes x] 
+    (if (== (count indexes) 1)
+        (mp/set-1d m (first indexes) x)
+        (throw (UnsupportedOperationException. "Only 1-d set on vectors is supported."))))
+  (is-mutable? [m] false)
+
+  mp/PMatrixCloning
+  (clone [m] (vector m))
+
+  ;; ---------------------------------------------------------------------------
+  ;;  Optional protocols
+  mp/PTypeInfo
+  (element-type [m]
+    java.lang.Double/TYPE)
+
+  mp/PCoercion
+  (coerce-param [m param]
+    (to-matrix param))
+
+  mp/PConversion
+  (convert-to-nested-vectors [m]
+    (as-vec m))
+
+  mp/PMatrixEquality
+  (matrix-equals [a b]
+    (.equiv a (to-matrix b)))
+
+  mp/PMatrixMultiply
+  (matrix-multiply [m a]
+    (* (matrix m) (to-matrix a)))
   (element-multiply [m a]
     (mult (matrix m) a))
 
@@ -1314,43 +1568,18 @@ Uses the same algorithm as java's default Random constructor."
   (normalise [a]
     (normalize a))
 
-  mp/PMatrixOps
-  (trace [m]
-    (trace m))
-  (determinant [m]
-    (det m))
-  (inverse [m]
-    (i m))
-  (negate [m]
-    (* -1 m))
-  (transpose [m]
-    (t m))
-
   mp/PSummable
-  (sum [m]
-    (sum m))
-
-  mp/PMatrixSlices
-  (get-row [m i]
-    (slice m i _))
-  (get-column [m i]
-    (slice m _ i))
-  (get-major-slice [m i]
-    (slice m i _))
-  (get-slice [m dimension i]
-    (condp = dimension
-      0 (slice m i _)
-      1 (slice m _ i))
-    (throw (UnsupportedOperationException. "Clatrix only support 2-d")))
+    (element-sum [m]
+      (sum m))
 
   mp/PSliceSeq
-  ;; API wants a seq of Matrices
+  ;; sequence of elements
   (get-major-slice-seq [m]
-    (clojure.core/map #(slice m % _) (range (nrows m))))
+    (seq (.toArray (me m))))
 
   mp/PFunctionalOperations
   (element-seq [m]
-    (flatten m))
+    (seq (.toArray (me m))))
   (element-map
     ([m f]
        (clojure.core/map f (flatten m)))
@@ -1359,8 +1588,9 @@ Uses the same algorithm as java's default Random constructor."
 
   (element-map! [m f]
     (map f m))
-  (element-reduce [m f]
-    (ereduce f m)))
+  (element-reduce 
+    ([m f] (ereduce f m))
+    ([m f init] (ereduce f init m))))
 
 ;;; Register the implementation with core.matrix
 (imp/register-implementation (zeros 2 2))

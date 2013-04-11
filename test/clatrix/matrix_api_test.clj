@@ -6,9 +6,30 @@
             [clojure.core.matrix.protocols :as p]
             [clojure.core.matrix.compliance-tester :as comp]))
 
-#_(deftest compliance-test
+
+(deftest regressions
+  (let [m (m/matrix :clatrix [1 2 3])
+        wm (clojure.core.matrix.impl.wrappers/wrap-nd m)]
+    (is (== 1 (dimensionality m)))
+    (is (= [3] (seq (m/shape m))))
+    (is (m/equals m wm))
+    (is (= [3] (seq (m/shape wm))))
+    (is (== 1 (m/dimensionality wm)))
+    (is (p/is-vector? wm))
+    (is (== 2.0 (m/mget wm 1)))
+    (is (m/equals [2.0] (m/subvector wm 1 1)))
+    (is (m/equals [2.0] (m/subvector m 1 1))))
+  (is (m/equals [1.0 2.0] (m/subvector (m/matrix :clatrix [1 2 3]) 0 2)))
+  (is (m/equals [1.0 2.0] (m/coerce [] (m/matrix :clatrix [1 2]))))
+  (is (every? number? (m/slices (m/matrix :clatrix '(1 2 3)))))
+  (is (= [1.0 2.0 3.0] (m/eseq (m/matrix :clatrix '(1 2 3)))))
+  (is (= [1.0 2.0 3.0] (m/slices (m/matrix :clatrix [1 2 3]))))
+  (is (= [1.0 2.0 3.0 4.0] (m/eseq (m/matrix :clatrix [[1 2] [3 4]]))))
+  (is (m/equals [1 2 3] (m/matrix :clatrix [1 2 3]))))
+
+(deftest compliance-test
   (comp/compliance-test (c/matrix [[1 2] [3 4]]))
-  )
+)
 
 (comment
   (def M (c/matrix [[1 2 3] [4 5 6] [7 8 9]]))  ;; 3x3 Matrix
