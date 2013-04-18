@@ -140,7 +140,7 @@
   clojure.lang.Sequential)
 
 (defn me [mat]
-  (if (vec? mat) 
+  (if (vec? mat)
     (.me ^Vector  mat)
     (.me ^Matrix  mat)))
 
@@ -178,7 +178,7 @@
 
 (defn clatrix?
   "Tests whether an object is a clatrix Matrix or Vector"
-  [m] (or (vec? m) (matrix? m))) 
+  [m] (or (vec? m) (matrix? m)))
 
 ;;; The most fundamental question about a matrix is its size. This
 ;;; also defines a number of other ideas such as whether a matrix is a
@@ -187,8 +187,8 @@
 ;;; order.
 (promote-mfun* defn ncols .columns)
 (promote-mfun* defn nrows .rows)
-(defn size [m] 
-  (cond 
+(defn size [m]
+  (cond
     (matrix? m) [(nrows m) (ncols m)]
     (vec? m) [(nrows m)]
     :else (throw (IllegalArgumentException. "Not a Clatrix Vector or Matrix"))))
@@ -232,7 +232,7 @@
          out
          (matrix out)))))
 
-(defn set 
+(defn set
   ([^Matrix m ^long r ^long c ^double e]
     (dotom .put m r c e)))
 
@@ -721,13 +721,13 @@ Uses the same algorithm as java's default Random constructor."
   ([^Matrix m rownum]
     (let [rv (.getRow (.me m) (int rownum))]
       (.reshape rv (.columns rv) 1)
-      (Vector. rv nil)))) 
+      (Vector. rv nil))))
 
 (defn slice-column
   "Slices a matrix to produce a vector representing a single row."
   ([^Matrix m colnum]
     (let [cv (.getColumn (.me m) (int colnum))]
-      (Vector. cv nil)))) 
+      (Vector. cv nil))))
 
 ;;; # Hinting
 ;;;
@@ -895,13 +895,13 @@ Uses the same algorithm as java's default Random constructor."
                  (throw+ {:exception "Matrix products must have compatible sizes."
                           :a-cols (ncols a)
                           :b-rows (nrows b)}))
-               (matrix? a) 
-                 (if (vec? b) 
+               (matrix? a)
+                 (if (vec? b)
                    (Vector. (dotom .mmul a ^DoubleMatrix (me b)) nil)
                    (matrix (dotom .mmul a (double b))))
-               (matrix? b) 
-                 (if (vec? a) 
-                   (Vector. (.transpose 
+               (matrix? b)
+                 (if (vec? a)
+                   (Vector. (.transpose
                               (.mmul (.transpose ^DoubleMatrix (me a)) ^DoubleMatrix (me b))) nil)
                    (matrix (dotom .mmul b (double a))))
                :else       (clojure.core/* a b)))
@@ -1151,10 +1151,20 @@ Uses the same algorithm as java's default Random constructor."
        :l (matrix ^DoubleMatrix (.l lu))
        :u (matrix ^DoubleMatrix (.u lu))})))
 
+;; This is a helper function that returns then number of permutations encoded
+;; in P.  It is the number of diagonal 0s - 1.  P is a permutation matrix hence
+;; all elements are 1 or zero.
+(defn- n-perms
+  [p]
+  (let [d (diag p)]
+    (max 0 (int (- (count d) (reduce + d) 1)))))
+
 (defn det
   "`(det A)` computes the determinant of A. Odd that there is no built in fn for this."
   [^Matrix mat]
-  (->> mat lu :u diag (apply *)))
+  (let [{p :p u :u} (lu mat)
+        s (if (even? (n-perms p)) 1 -1)]
+    (->> u diag (apply * s))))
 
 ;;; # Printing the matrices
 ;;;
@@ -1288,11 +1298,11 @@ Uses the same algorithm as java's default Random constructor."
 
 ;;; TODO: pow is more complex and not currenty supported
 
-(defn- make-new-matrix 
+(defn- make-new-matrix
   "Creates a new matrix filled with zeros"
   ([shape]
     (let [dims (count shape)]
-      (cond 
+      (cond
         (== dims 0) 0
         (== dims 1) (vector (repeat (first shape) 0))
         (== dims 2) (zeros (first shape) (second shape))
@@ -1350,7 +1360,7 @@ Uses the same algorithm as java's default Random constructor."
   mp/PIndexedAccess
   (get-1d [m i] (get m i))
   (get-2d [m row column] (get m row column))
-  (get-nd [m indexes] 
+  (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 2)
         (mp/get-2d m (first indexes) (second indexes))
@@ -1364,7 +1374,7 @@ Uses the same algorithm as java's default Random constructor."
            (matrix (set (matrix m) i 0 x)))))
 
   (set-2d [m row column x] (matrix (set (matrix m) row column x)))
-  (set-nd [m indexes x] 
+  (set-nd [m indexes x]
     (if (== (count indexes) 2)
         (mp/set-2d m (first indexes) (second indexes) x)
         (throw (UnsupportedOperationException. "Only 2-d set on matrices is supported."))))
@@ -1462,9 +1472,9 @@ Uses the same algorithm as java's default Random constructor."
     ([m f a]
        (clojure.core/map f (flatten m) a)))
 
-  (element-map! 
+  (element-map!
     ([m f] (map f m)))
-  (element-reduce 
+  (element-reduce
     ([m f]
       (ereduce f m))
     ([m f init ]
@@ -1498,7 +1508,7 @@ Uses the same algorithm as java's default Random constructor."
   mp/PIndexedAccess
   (get-1d [m i] (get m i))
   (get-2d [m row column] (get m row column))
-  (get-nd [m indexes] 
+  (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 1)
         (mp/get-1d m (first indexes))
@@ -1509,7 +1519,7 @@ Uses the same algorithm as java's default Random constructor."
     ;; We don't know the 1*x or x*1, so just guess. Yuck
     (vector (set (matrix m) i 0 x)))
 
-  (set-nd [m indexes x] 
+  (set-nd [m indexes x]
     (if (== (count indexes) 1)
         (mp/set-1d m (first indexes) x)
         (throw (UnsupportedOperationException. "Only 1-d set on vectors is supported."))))
@@ -1588,7 +1598,7 @@ Uses the same algorithm as java's default Random constructor."
 
   (element-map! [m f]
     (map f m))
-  (element-reduce 
+  (element-reduce
     ([m f] (ereduce f m))
     ([m f init] (ereduce f init m))))
 

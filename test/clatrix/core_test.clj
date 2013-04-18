@@ -22,7 +22,7 @@
 (def R (c/t (c/matrix (range m))))
 (def C (c/column (range n)))
 (def M (c/matrix [[1 2 3] [4 5 6]]))
-(def V (c/vector [1 2 3])) 
+(def V (c/vector [1 2 3]))
 (def ridx (range n))
 (def cidx (range m))
 
@@ -110,7 +110,7 @@
                c/matrix? false
                c/vec? true
                c/clatrix? true
-               count 3)) 
+               count 3))
 
 (let [z (rand)]
   (c/set A 0 0 z)
@@ -251,6 +251,11 @@
 ;; LU decomposition
 (let [lu (c/lu B)]
   (expect B (c/* (:p lu) (:l lu) (:u lu))))
+
+;; Determinants
+(expect 1.0 (c/det (c/matrix [[1 0] [0 1]])))
+(expect -1.0 (c/det (c/matrix [[0 1] [1 0]])))
+(expect -21.0 (c/det (c/matrix [[0 1 3] [3 1 0] [4 2 9]])))
 
 ;; Eigen decomposition
 (let [Ss   (c/symmetric (c/* S (c/t S)))
