@@ -252,6 +252,10 @@
 (let [lu (c/lu B)]
   (expect B (c/* (:p lu) (:l lu) (:u lu))))
 
+;; QR decomposition
+(let [qr (c/qr B)]
+  (expect B (c/* (:q qr) (:r qr))))
+
 ;; Determinants
 (expect 1.0 (c/det (c/matrix [[1 0] [0 1]])))
 (expect -1.0 (c/det (c/matrix [[0 1] [1 0]])))
