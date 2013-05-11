@@ -1151,6 +1151,14 @@ Uses the same algorithm as java's default Random constructor."
        :l (matrix ^DoubleMatrix (.l lu))
        :u (matrix ^DoubleMatrix (.u lu))})))
 
+(defn qr
+  "`(qr A)` computes the QR decomposition of `A`, returning `{:q Q :r R}` such
+  that `A = QR`."
+  [^Matrix mat]
+  (let [qr (dotom Decompose/qr mat)]
+    {:q (matrix ^DoubleMatrix (.q qr))
+     :r (matrix ^DoubleMatrix (.r qr))}))
+
 ;; This is a helper function that returns then number of permutations encoded
 ;; in P.  It is the number of diagonal 0s - 1.  P is a permutation matrix hence
 ;; all elements are 1 or zero.
