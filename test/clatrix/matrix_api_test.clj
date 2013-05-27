@@ -27,6 +27,14 @@
   (is (= [1.0 2.0 3.0 4.0] (m/eseq (m/matrix :clatrix [[1 2] [3 4]]))))
   (is (m/equals [1 2 3] (m/matrix :clatrix [1 2 3]))))
 
+(deftest matrix-tests
+  (let [m (m/matrix :clatrix [[1 2 3] [3 4 5]])]
+    (is (== 2 (m/dimensionality m)))
+    (is (== 2 (m/dimension-count m 0)))
+    (is (== 2 (m/dimension-count m 1)))
+    (is (equals [1 3] (first (m/columns m))))
+    (is (equals [1 2 3] (first (m/rows m))))))
+
 (deftest compliance-test
   (comp/compliance-test (c/matrix [[1 2] [3 4]]))
 )
