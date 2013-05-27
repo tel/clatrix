@@ -32,8 +32,8 @@
     (is (== 2 (m/dimensionality m)))
     (is (== 2 (m/dimension-count m 0)))
     (is (== 2 (m/dimension-count m 1)))
-    (is (equals [1 3] (first (m/columns m))))
-    (is (equals [1 2 3] (first (m/rows m))))))
+    (is (m/equals [1 3] (first (m/columns m))))
+    (is (m/equals [1 2 3] (first (m/rows m))))))
 
 (deftest compliance-test
   (comp/compliance-test (c/matrix [[1 2] [3 4]]))
