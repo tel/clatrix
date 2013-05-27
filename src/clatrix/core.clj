@@ -102,7 +102,7 @@
   clojure.lang.IObj
 
   (withMeta [this metadata]
-    (Matrix. me metadata))
+    (Vector. me metadata))
   (meta [this]
     metadata)
 
