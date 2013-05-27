@@ -78,6 +78,11 @@
   (empty [this]
     (matrix []))
 
+  clojure.lang.Reversible
+  (rseq [this]
+    "Return a reverse seq of rows for a 2D or a reverse seq of entries for a 1D matrix"
+    (seq (reverse this)))
+
   clojure.lang.Counted  ;; The number of rows for a matrix, or elems for a vector
   (count [this]
     (if (vector-matrix? this)
@@ -132,6 +137,11 @@
 
   (empty [this]
     (matrix []))
+
+  clojure.lang.Reversible
+  (rseq [this]
+    "Return a reverse seq of entries for a 1D matrix"
+    (seq (reverse this)))
 
   clojure.lang.Counted  ;; The number of rows for a matrix, or elems for a vector
   (count [this]
