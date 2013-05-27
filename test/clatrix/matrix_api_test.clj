@@ -35,6 +35,11 @@
     (is (m/equals [1 3] (first (m/columns m))))
     (is (m/equals [1 2 3] (first (m/rows m))))))
 
+(deftest instance-tests
+  (comp/instance-test (c/matrix [[1 2] [3 4]]))
+  (comp/instance-test (c/vector [1 2]))
+)
+
 (deftest compliance-test
   (comp/compliance-test (c/matrix [[1 2] [3 4]]))
 )
