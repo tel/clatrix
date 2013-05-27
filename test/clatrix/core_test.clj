@@ -162,6 +162,11 @@
          (c/matrix [6 21 36 51 66 81 96 111 126 141])]
         (c/cols F [4 7 6]))
 
+;; clojure reverse methods
+(expect (c/vector [3 2 1]) (rseq V))
+(expect (c/column (reverse (range n))) (rseq C))
+(expect (c/matrix [[4 5 6] [1 2 3]]) (rseq M))
+
 ;; properties of id
 (given (c/eye n)
        (expect c/size [n n]
