@@ -1,7 +1,8 @@
 (ns clatrix.core
   (:refer-clojure :exclude [get set map-indexed map rand vector? + - * pp vector])
   (:use [slingshot.slingshot :only [throw+]])
-  (:require [clojure.core.matrix.protocols :as mp]
+  (:require [clojure.core.matrix :as m]
+            [clojure.core.matrix.protocols :as mp]
             [clojure.core.matrix.implementations :as imp])
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
             Decompose Decompose$LUDecomposition Eigen Solve Geometry
@@ -201,7 +202,8 @@
   (cond
     (matrix? m) [(nrows m) (ncols m)]
     (vec? m) [(nrows m)]
-    :else (throw (IllegalArgumentException. "Not a Clatrix Vector or Matrix"))))
+    (m/array? m) (m/shape m) 
+    :else (throw (IllegalArgumentException. "Not a Vector or Matrix"))))
 (defn vector-matrix?
   "Is m nx1 or 1xn"
   [^Matrix m]
