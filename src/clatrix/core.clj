@@ -1,7 +1,8 @@
 (ns clatrix.core
   (:refer-clojure :exclude [get set map-indexed map rand vector? + - * pp vector])
   (:use [slingshot.slingshot :only [throw+]])
-  (:require [clojure.core.matrix.protocols :as mp]
+  (:require [clojure.core.matrix :as m]
+            [clojure.core.matrix.protocols :as mp]
             [clojure.core.matrix.implementations :as imp])
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
             Decompose Decompose$LUDecomposition Eigen Solve Geometry
@@ -101,7 +102,7 @@
   clojure.lang.IObj
 
   (withMeta [this metadata]
-    (Matrix. me metadata))
+    (Vector. me metadata))
   (meta [this]
     metadata)
 
@@ -136,7 +137,7 @@
     (next (seq this)))
 
   (empty [this]
-    (matrix []))
+    (vector []))
 
   clojure.lang.Reversible
   (rseq [this]
@@ -201,7 +202,8 @@
   (cond
     (matrix? m) [(nrows m) (ncols m)]
     (vec? m) [(nrows m)]
-    :else (throw (IllegalArgumentException. "Not a Clatrix Vector or Matrix"))))
+    (m/array? m) (m/shape m) 
+    :else (throw (IllegalArgumentException. "Not a Vector or Matrix"))))
 (defn vector-matrix?
   "Is m nx1 or 1xn"
   [^Matrix m]
@@ -265,6 +267,7 @@
   in row-major order."  [^Matrix m]
   (vec (clojure.core/map vec (vec (dotom .toArray2 m)))))
 
+;; TODO: different behaviour for vector-matrix seems broken?
 (defn as-vec
   "`as-vec` converts a matrix object into a seq-of-seqs of its
   elements in row-major order. Treats `vector?` type matrices
@@ -920,12 +923,12 @@ Uses the same algorithm as java's default Random constructor."
 (defn mult
   "Element-wise multiplication."
   ([a b] (cond (and (matrix? a) (matrix? b))
-               (matrix (dotom .mul a ^DoubleMatrix (me b)))
+                           (matrix (dotom .mul a ^DoubleMatrix (me b)))
                (matrix? a) (matrix
                              (dotom .mul a (double b)))
                (matrix? b) (matrix
                              (dotom .mul b (double a)))
-               :else       (clojure.core/* a b))))
+               :else       (m/emul a b))))
 
 (defn div
   "Element-wise division."
@@ -935,7 +938,7 @@ Uses the same algorithm as java's default Random constructor."
                              (dotom .div a (double b)))
                (matrix? b) (matrix
                              (dotom .rdiv b (double a)))
-               :else       (clojure.core// a b))))
+               :else       (m/div a b))))
 
 (defn -
   "`-` differences vectors and matrices (and scalars as if they were
