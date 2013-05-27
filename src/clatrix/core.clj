@@ -923,12 +923,12 @@ Uses the same algorithm as java's default Random constructor."
 (defn mult
   "Element-wise multiplication."
   ([a b] (cond (and (matrix? a) (matrix? b))
-               (matrix (dotom .mul a ^DoubleMatrix (me b)))
+                           (matrix (dotom .mul a ^DoubleMatrix (me b)))
                (matrix? a) (matrix
                              (dotom .mul a (double b)))
                (matrix? b) (matrix
                              (dotom .mul b (double a)))
-               :else       (clojure.core/* a b))))
+               :else       (m/emul a b))))
 
 (defn div
   "Element-wise division."
@@ -938,7 +938,7 @@ Uses the same algorithm as java's default Random constructor."
                              (dotom .div a (double b)))
                (matrix? b) (matrix
                              (dotom .rdiv b (double a)))
-               :else       (clojure.core// a b))))
+               :else       (m/div a b))))
 
 (defn -
   "`-` differences vectors and matrices (and scalars as if they were
