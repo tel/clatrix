@@ -31,7 +31,7 @@
   (let [m (m/matrix :clatrix [[1 2 3] [3 4 5]])]
     (is (== 2 (m/dimensionality m)))
     (is (== 2 (m/dimension-count m 0)))
-    (is (== 2 (m/dimension-count m 1)))
+    (is (== 3 (m/dimension-count m 1)))
     (is (m/equals [1 3] (first (m/columns m))))
     (is (m/equals [1 2 3] (first (m/rows m))))))
 
