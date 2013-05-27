@@ -137,7 +137,7 @@
     (next (seq this)))
 
   (empty [this]
-    (matrix []))
+    (vector []))
 
   clojure.lang.Reversible
   (rseq [this]
@@ -267,6 +267,7 @@
   in row-major order."  [^Matrix m]
   (vec (clojure.core/map vec (vec (dotom .toArray2 m)))))
 
+;; TODO: different behaviour for vector-matrix seems broken?
 (defn as-vec
   "`as-vec` converts a matrix object into a seq-of-seqs of its
   elements in row-major order. Treats `vector?` type matrices
