@@ -202,7 +202,7 @@
   (cond
     (matrix? m) [(nrows m) (ncols m)]
     (vec? m) [(nrows m)]
-    (m/array? m) (m/shape m) 
+    (m/array? m) (m/shape m)
     :else (throw (IllegalArgumentException. "Not a Vector or Matrix"))))
 (defn vector-matrix?
   "Is m nx1 or 1xn"
@@ -1010,8 +1010,8 @@ Uses the same algorithm as java's default Random constructor."
       A)))
 
 (defn solve
-  "`solve` solves the equation `Ax = B` for the column `Matrix`
-  `x`. Positivity and symmetry hints on `A` will cause `solve` to use
+  "`solve` solves the equation `A X = B` for the `Matrix` `X`.
+  Positivity and symmetry hints on `A` will cause `solve` to use
   optimized LAPACK routines."
   [^Matrix A ^Matrix B]
   (matrix
@@ -1023,6 +1023,14 @@ Uses the same algorithm as java's default Random constructor."
       :else          (Solve/solve ^DoubleMatrix (me A)
                                   ^DoubleMatrix (me B)))
     ))
+
+(defn lm
+  "`lm` computes the ordinary least squares solution `A X = B` for an
+  over- or under-determined system of linear equations using the QR
+  decomposition."
+  [^Matrix A ^Matrix B]
+  (matrix (Solve/solveLeastSquares ^DoubleMatrix (me A)
+                                   ^DoubleMatrix (me B))))
 
 (defn i
   "`i` computes the inverse of a matrix. This is done via Gaussian
