@@ -1026,8 +1026,8 @@ Uses the same algorithm as java's default Random constructor."
 
 (defn lm
   "`lm` computes the ordinary least squares solution `A X = B` for an
-  over- or under-determined system of linear equations using the QR
-  decomposition."
+  over- or under-determined system of linear equations using the SVD
+  (singular value decomposition)."
   [^Matrix A ^Matrix B]
   (matrix (Solve/solveLeastSquares ^DoubleMatrix (me A)
                                    ^DoubleMatrix (me B))))
