@@ -498,7 +498,8 @@ Uses the same algorithm as java's default Random constructor."
                          ^DoubleMatrix %1
                          ^DoubleMatrix (me %2))
                       (me (first vec-seq))
-                      (rest vec-seq))))))
+                      (rest vec-seq)))
+      (throw (IllegalArgumentException. "hstack requires same number of rows in each matrix")))))
 
 (defn vstack
   "`vstack` is vertical concatenation in the style of `hstack`. See
@@ -511,7 +512,8 @@ Uses the same algorithm as java's default Random constructor."
                          ^DoubleMatrix %1
                          ^DoubleMatrix (me %2))
                       (me (first vec-seq))
-                      (rest vec-seq))))))
+                      (rest vec-seq)))
+      (throw (IllegalArgumentException. "vstack requires same number of columns in each matrix")))))
 
 (defn rows
   "`rows` explodes a `Matrix` into its constituent rows. By default,
