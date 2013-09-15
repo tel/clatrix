@@ -202,7 +202,7 @@
   (cond
     (matrix? m) [(nrows m) (ncols m)]
     (vec? m) [(nrows m)]
-    (m/array? m) (m/shape m) 
+    (m/array? m) (m/shape m)
     :else (throw (IllegalArgumentException. "Not a Vector or Matrix"))))
 (defn vector-matrix?
   "Is m nx1 or 1xn"
@@ -243,6 +243,11 @@
        (if (number? out)
          out
          (matrix out)))))
+
+(defmacro mget
+  "Faster implementation of `get`, a single value by indices only."
+  ([m r] `(dotom .get ~m ~r))
+  ([m r c] `(dotom .get ~m ~r ~c)))
 
 (defn set
   ([^Matrix m ^long r ^long c ^double e]
@@ -1381,8 +1386,8 @@ Uses the same algorithm as java's default Random constructor."
                                             (throw (IllegalArgumentException. "Matrix only has dimensions 0 and 1")))))
 
   mp/PIndexedAccess
-  (get-1d [m i] (get m i))
-  (get-2d [m row column] (get m row column))
+  (get-1d [m i] (mget m i))
+  (get-2d [m row column] (mget m row column))
   (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 2)
@@ -1529,8 +1534,8 @@ Uses the same algorithm as java's default Random constructor."
                                             (throw (IllegalArgumentException. "Vector only has dimension 0")))))
 
   mp/PIndexedAccess
-  (get-1d [m i] (get m i))
-  (get-2d [m row column] (get m row column))
+  (get-1d [m i] (mget m i))
+  (get-2d [m row column] (mget m row column))
   (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 1)
