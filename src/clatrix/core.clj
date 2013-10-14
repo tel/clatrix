@@ -385,7 +385,7 @@
   [^Matrix A p q]
   (let [[n m] (size A)]
     (if (= (clojure.core/* n m) (clojure.core/* p q))
-      (dotom A p q)
+      (dotom .reshape A p q)
       (throw+ {:exception "Cannot change the number of elements during a reshape."
                :previous (clojure.core/* n m)
                :new (clojure.core/* p q)}))))
