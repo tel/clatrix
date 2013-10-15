@@ -379,9 +379,8 @@
 
 ;;; ## Reshaping
 
-(defn reshape
-  "`(reshape A p q)` coerces an `n`x`m` matrix to be `p`x`q` so long
-  as `pq = nm`."
+(defn reshape!
+  "reshape! modifies matrix in place."  
   [^Matrix A p q]
   (let [[n m] (size A)]
     (if (= (clojure.core/* n m) (clojure.core/* p q))
@@ -390,6 +389,12 @@
                :previous (clojure.core/* n m)
                :new (clojure.core/* p q)}))))
 
+(defn reshape
+  "`(reshape A p q)` coerces an `n`x`m` matrix to be `p`x`q` so long
+  as `pq = nm`."
+  [^Matrix A p q]
+  (reshape! (matrix A) p q))
+  
 ;;; ## Sparse and indexed builds
 ;;;
 ;;; Sometimes your matrix is mostly zeros and it's easy to specify the
