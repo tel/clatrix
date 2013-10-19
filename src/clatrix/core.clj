@@ -366,7 +366,7 @@
          (case (long (m/dimensionality m))
            0 (double (mp/get-0d m))
            1 (vector m)
-           2 (vector m))
+           2 (matrix m))
       :else (double m))))
 
 (defn diag
@@ -1602,6 +1602,12 @@ Uses the same algorithm as java's default Random constructor."
   (coerce-param [m param]
     (clatrix param))
 
+  mp/PBroadcast
+    (broadcast [m shape]
+      (cond 
+        (and (== 1 (count shape)) (== (first shape) (nrows m))) m
+        (and (== 2 (count shape)) (== (second shape) (nrows m))) (matrix (vec (repeat (first shape) m)))))
+  
   mp/PConversion
   (convert-to-nested-vectors [m]
     (to-vecs m))
