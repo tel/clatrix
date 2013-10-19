@@ -96,8 +96,7 @@
 (deftype Vector [^DoubleMatrix me ^clojure.lang.IPersistentMap metadata]
   Object
   (toString [mat]
-    (str (list `matrix
-               (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat))))))))
+    (str (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat)))))))
 
   clojure.lang.IObj
 
@@ -277,6 +276,16 @@
     (vec (dotom .toArray m))
     (dense m)))
 
+(defn to-vecs
+  "`to-vecs` converts a matrix object into a seq-of-seqs of its
+  elements in row-major order. Unlike `as-vec`, does not flatten 1*n or n*1
+  matrices into a single vector."
+  [m]
+  (cond 
+    (number? m) m
+    (vec? m) (vec (dotom .toArray m))
+    (matrix? m) (dense m)))
+
 ;;;
 ;;; Matrices can be created from a number of simple specifications,
 ;;; such as (1) direct coercions, (2) element-constant matrices and
@@ -346,6 +355,19 @@
     (vector m nil))
   ([m meta-map]
     (Vector. (me (matrix m)) meta-map)))
+
+(defn clatrix 
+  "Coerces an arbitrary array to Clatrix format (a Matrix, a Vector or a number)"
+  ([m]
+    (cond
+      (clatrix? m) m
+      (number? m) m
+      (m/array? m)
+         (case (long (m/dimensionality m))
+           0 (double (mp/get-0d m))
+           1 (vector m)
+           2 (vector m))
+      :else (double m))))
 
 (defn diag
   "`diag` creates a diagonal matrix from a seq of numbers or extracts
@@ -481,8 +503,10 @@ Uses the same algorithm as java's default Random constructor."
 
 (defn t
   "`(t A)` is the transpose of `A`."
-  [^Matrix mat]
-  (matrix (dotom .transpose mat)))
+  [mat]
+  (if (matrix? mat)
+    (matrix (dotom .transpose mat))
+    mat))
 
 (defn hstack
   "`hstack` concatenates a number of matrices by aligning them
@@ -926,11 +950,18 @@ Uses the same algorithm as java's default Random constructor."
   "Element-wise multiplication."
   ([a b] (cond (and (matrix? a) (matrix? b))
                            (matrix (dotom .mul a ^DoubleMatrix (me b)))
-               (matrix? a) (matrix
-                             (dotom .mul a (double b)))
-               (matrix? b) (matrix
-                             (dotom .mul b (double a)))
-               :else       (m/emul a b))))
+               (and (matrix? a) (number? b)) 
+                           (matrix (dotom .mul a (double b)))
+               (and (matrix? b) (number? a)) 
+                           (matrix (dotom .mul b (double a)))
+               (and (vec? a) (vec? b))
+                  (vector (dotom .mul a ^DoubleMatrix (me b)))
+               :else       
+                 (case (max (mp/dimensionality a) (mp/dimensionality b))
+                   0 (* (mp/get-0d a) (mp/get-0d b))
+                   1 (mult (vector a) (vector b))
+                   2 (mult (matrix a) (matrix b))
+                   (throw+ {:exception "Clatrix multiplication does not support dimensionality greater than 2."})))))
 
 (defn div
   "Element-wise division."
@@ -946,7 +977,8 @@ Uses the same algorithm as java's default Random constructor."
   "`-` differences vectors and matrices (and scalars as if they were
   constant matrices). All the matrices must have the same size."
   ([a] (* -1 a))
-  ([a b] (cond (and (matrix? a) (matrix? b))
+  ([a b] (cond  (and (number? a) (number? b)) (clojure.core/- a b)
+                (and (matrix? a) (matrix? b))
                  (if (= (size a) (size b))
                    (matrix (dotom .sub a ^DoubleMatrix (me b)))
                    (throw+ {:exception "Matrices of different sizes cannot be differenced."
@@ -954,11 +986,11 @@ Uses the same algorithm as java's default Random constructor."
                             :bsize (size b)}))
                (and (vec? a) (vec? b))
                  (vector (dotom .sub a ^DoubleMatrix (me b)))
-               (matrix? a) (matrix
-                             (dotom .sub a (double b)))
-               (matrix? b) (matrix
-                             (dotom .rsub b (double a)))
-               :else       (clojure.core/- a b)))
+               (and (matrix? a) (number? b)) (matrix
+                                               (dotom .sub a (double b)))
+               (and (matrix? b) (number? a)) (matrix
+                                               (dotom .rsub b (double a)))
+               :else (throw+ {:exception (str "Clatrix `-` does not support " a " and " b ".")})))
   ([a b & as] (reduce - a (cons b as))))
 
 (defn sum
@@ -1420,21 +1452,25 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PCoercion
   (coerce-param [m param]
-    (to-matrix param))
+    (clatrix param))
 
   mp/PConversion
   (convert-to-nested-vectors [m]
-    (as-vec m))
+    (to-vecs m))
 
   mp/PMatrixEquality
   (matrix-equals [a b]
-    (.equiv a (to-matrix b)))
+    (and 
+      (m/same-shape? a b)
+      (.equiv a (to-matrix b))))
 
   mp/PMatrixMultiply
   (matrix-multiply [m a]
     (* (matrix m) (to-matrix a)))
   (element-multiply [m a]
-    (mult (matrix m) a))
+    (let [[m a] (mp/broadcast-compatible m a)
+          a (m/coerce m a)]
+      (mult (matrix m) a)))
 
   mp/PVectorTransform
   (vector-transform [m v]
@@ -1448,9 +1484,14 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PMatrixAdd
   (matrix-add [m a]
-    (+ m a))
+    (let [[m a] (mp/broadcast-compatible m a)
+          a (m/coerce m a)
+          ]
+      (+ m a)))
   (matrix-sub [m a]
-    (- m a))
+    (let [[m a] (mp/broadcast-compatible m a)
+          a (m/coerce m a)]
+      (- m a)))
 
   mp/PMatrixOps
   (trace [m]
@@ -1559,21 +1600,25 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PCoercion
   (coerce-param [m param]
-    (to-matrix param))
+    (clatrix param))
 
   mp/PConversion
   (convert-to-nested-vectors [m]
-    (as-vec m))
+    (to-vecs m))
 
   mp/PMatrixEquality
   (matrix-equals [a b]
-    (.equiv a (to-matrix b)))
+    (and
+      (mp/same-shape? a b)
+      (.equiv a (vector b))))
 
   mp/PMatrixMultiply
   (matrix-multiply [m a]
-    (* (matrix m) (to-matrix a)))
+    (* m (m/coerce m a)))
   (element-multiply [m a]
-    (mult (matrix m) a))
+    (let [a (m/broadcast-like m a)
+          a (clatrix a)]
+      (mult m a)))
 
   mp/PVectorTransform
   (vector-transform [m v]
@@ -1581,15 +1626,21 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PMatrixScaling
   (scale [m a]
-    (mult (matrix m) a))
+    (mult m a))
   (pre-scale [m a]
-    (mult (matrix m) a))
+    (mult m a))
 
   mp/PMatrixAdd
   (matrix-add [m a]
-    (+ m a))
+    (let [[m a] (mp/broadcast-compatible m a)
+          a (m/coerce m a)
+          ]
+      (+ m a)))
   (matrix-sub [m a]
-    (- m a))
+    (let [[m a] (mp/broadcast-compatible m a)
+          a (m/coerce m a)
+          ]
+      (- m a)))
 
   mp/PVectorOps
   (vector-dot [a b]
