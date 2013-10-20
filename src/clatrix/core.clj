@@ -61,14 +61,11 @@
   (cons [this x]
     (cond
      (matrix? x)  (vstack this x)
-     (and (coll? x) (number? (first x))) (vstack this (matrix (vector x)))
      :else (vstack this (matrix x))))
 
   (seq [this]
     "Return a seq of rows for a 2D or a seq of entries for a 1D matrix"
-    (if (vector-matrix? this)
-      (seq (.toArray (.me this)))
-      (clojure.core/map matrix (row-list (.me this)))))
+    (clojure.core/map vector (row-list (.me this))))
 
   (first [this]
     (first (seq this)))
@@ -187,7 +184,7 @@
   [m] (instance? Vector m))
 
 (defn clatrix?
-  "Tests whether an object is a clatrix Matrix or Vector"
+  "Tests whether an object is either a clatrix Matrix or Vector"
   [m] (or (vec? m) (matrix? m)))
 
 ;;; The most fundamental question about a matrix is its size. This
@@ -197,16 +194,19 @@
 ;;; order.
 (promote-mfun* defn ncols .columns)
 (promote-mfun* defn nrows .rows)
+
 (defn size [m]
   (cond
     (matrix? m) [(nrows m) (ncols m)]
     (vec? m) [(nrows m)]
     (m/array? m) (m/shape m) 
     :else (throw (IllegalArgumentException. "Not a Vector or Matrix"))))
+
 (defn vector-matrix?
   "Is m nx1 or 1xn"
   [^Matrix m]
   (or (.isRowVector (.me m)) (.isColumnVector (.me m))))
+
 (defn row?    [m] (and (matrix? m) (== 1 (first (size m)))))
 (defn column? [m] (and (matrix? m) (== 1 (second (size m)))))
 (defn square? [^Matrix m] (reduce == (size m)))
@@ -1534,12 +1534,12 @@ Uses the same algorithm as java's default Random constructor."
     (flatten m))
   (element-map
     ([m f]
-       (clojure.core/map f (flatten m)))
+       (matrix (map f m)))
     ([m f a]
        (clojure.core/map f (flatten m) a)))
 
   (element-map!
-    ([m f] (map f m)))
+    ([m f] (map! f m)))
   (element-reduce
     ([m f]
       (ereduce f m))
@@ -1674,12 +1674,14 @@ Uses the same algorithm as java's default Random constructor."
     (seq (.toArray (me m))))
   (element-map
     ([m f]
-       (clojure.core/map f (flatten m)))
+       ;; TODO: make faster version, note clatrix overrides cljure.core/map
+       (vector (map f m)))
     ([m f a]
-       (clojure.core/map f (flatten m) a)))
+       ;; TODO: make faster version, note clatrix overrides cljure.core/map
+       :TODO))
 
   (element-map! [m f]
-    (map f m))
+    (map! f m))
   (element-reduce
     ([m f] (ereduce f m))
     ([m f init] (ereduce f init m))))
