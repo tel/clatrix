@@ -347,7 +347,9 @@
 
 (defmethod matrix :default
   [m & _]
-  (matrix (mp/convert-to-nested-vectors m)))
+  (if (m/zero-dimensional? m)
+    (matrix (double (mp/get-0d m)))
+    (matrix (mp/convert-to-nested-vectors m))))
 
 ;; Constructor for vector type.
 (defn vector
