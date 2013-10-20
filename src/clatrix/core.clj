@@ -65,7 +65,9 @@
 
   (seq [this]
     "Return a seq of rows for a 2D or a seq of entries for a 1D matrix"
-    (clojure.core/map vector (row-list (.me this))))
+    (if (vector-matrix? this)
+      (seq (.toArray (.me this)))
+      (clojure.core/map matrix (row-list (.me this)))))
 
   (first [this]
     (first (seq this)))
@@ -905,16 +907,17 @@ Uses the same algorithm as java's default Random constructor."
 
 (defn norm
   "`norm` computes the 2-norm of a vector or the Frobenius norm of a matrix."
-  [^Matrix mat]
+  [mat]
   (dotom .norm2 mat))
 
 (defn normalize
   "`normalize` normalizes a matrix as a single column or collection of
   column vectors."
-  [^Matrix mat & [flags]]
-  (if (column? mat)
-    (matrix (dotom Geometry/normalize mat))
-    (matrix (dotom Geometry/normalizeColumns mat))))
+  [mat & [flags]]
+  (cond 
+    (vec? mat) (vector (dotom Geometry/normalize mat))
+    (column? mat) (matrix (dotom Geometry/normalize mat))
+    :else (matrix (dotom Geometry/normalizeColumns mat))))
 
 (defn +
   "`+` sums vectors and matrices (and scalars as if they were constant
