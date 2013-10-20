@@ -245,7 +245,9 @@
 
 (defn set
   ([^Matrix m ^long r ^long c ^double e]
-    (dotom .put m r c e)))
+    (dotom .put m r c e))
+  ([^Vector m ^long r ^double e]
+    (dotom .put m r 1 e)))
 
 ;;; Already this is sufficient to get some algebraic matrix
 ;;; properties, such as
@@ -429,11 +431,16 @@
   `A`, `(get A i j)` is `v`. The sparse specifications are applied in
   order, so if they overlap the latter spec will override the prior
   ones."
-  [^long n ^long m specs]
-  (let [m (zeros n m)]
-    (doseq [[i j v] specs]
-      (set m i j v))
-    m))
+  ([^long n ^long m specs]
+    (let [m (zeros n m)]
+      (doseq [[i j v] specs]
+        (set m i j v))
+      m))
+  ([^long n specs]
+    (let [m (vector (repeat n 0.0))]
+      (doseq [[i v] specs]
+        (set m i v))
+      m)))
 
 (defn from-indices
   "`from-indices` builds an `n`x`m` matrix from a function mapping the
@@ -1675,10 +1682,10 @@ Uses the same algorithm as java's default Random constructor."
   (element-map
     ([m f]
        ;; TODO: make faster version, note clatrix overrides cljure.core/map
-       (vector (map f m)))
+       (vector (clojure.core/mapv f m)))
     ([m f a]
        ;; TODO: make faster version, note clatrix overrides cljure.core/map
-       :TODO))
+       (vector (clojure.core/mapv f m (vector a)))))
 
   (element-map! [m f]
     (map! f m))
