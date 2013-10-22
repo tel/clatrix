@@ -162,6 +162,9 @@
          (c/matrix [6 21 36 51 66 81 96 111 126 141])]
         (c/cols F [4 7 6]))
 
+(expect M (c/matrix (into-array [(double-array [1 2 3]) (double-array [4 5 6])])))
+(expect V (c/matrix (double-array [1 2 3])))
+
 ;; clojure reverse methods
 (expect (c/vector [3 2 1]) (rseq V))
 (expect (c/column (reverse (range n))) (rseq C))

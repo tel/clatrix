@@ -290,13 +290,14 @@
 (derive java.util.Collection ::collection)
 (derive DoubleMatrix ::double-matrix)
 (derive Matrix ::matrix)
+(derive (Class/forName "[D") ::double-array)
+(derive (Class/forName "[[D") ::double-array-2D)
 
 (defmulti matrix
   "`matrix` creates a `Matrix` from a seq of seqs, specifying the
   matrix in row-major order. The length of each seq must be
   identical or an error is throw."
   (fn [m & args] (class m)))
-
 
 (defmethod matrix ::matrix
   ([^Matrix m & _]
@@ -307,6 +308,16 @@
    (matrix x nil))
   ([^DoubleMatrix x meta]
    (Matrix. x meta)))
+
+(defmethod matrix ::double-array
+  ([doubles] (matrix doubles nil))
+  ([doubles meta]
+     (matrix (DoubleMatrix. doubles) meta)))
+
+(defmethod matrix ::double-array-2D
+  ([doubles] (matrix doubles nil))
+  ([doubles meta]
+     (matrix (DoubleMatrix. doubles) meta)))
 
 (defmethod matrix ::collection
   ([s]
