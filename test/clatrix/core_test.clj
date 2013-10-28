@@ -115,9 +115,10 @@
                c/clatrix? true
                count 3))
 
-(let [z (rand)]
-  (c/set A 0 0 z)
-  (expect z (c/get A 0 0)))
+(let [z (rand)
+      A-copy (c/matrix A)]
+  (c/set A-copy 0 0 z) ;; note this performs mutation
+  (expect z (c/get A-copy 0 0)))
 
 (expect 1.0 (c/mget V 0))
 (expect 3.0 (c/mget V 2))

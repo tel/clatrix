@@ -257,14 +257,15 @@
 
 (defmacro mget
   "Faster implementation of `get`, a single value by indices only."
-  ([m r] `(dotom .get ~m ~r))
-  ([m r c] `(dotom .get ~m ~r ~c)))
+  ([m r] `(dotom .get ~m (int ~r)))
+  ([m r c] `(dotom .get ~m (int ~r) (int ~c))))
 
 (defn set
+  "Sets a value in a matrix or vector. WARNING: Mutates the matrix or vector."
   ([^Matrix m ^long r ^long c ^double e]
-    (dotom .put m r c e))
+    (dotom .put m (int r) (int c) e))
   ([^Vector m ^long r ^double e]
-    (dotom .put m r 1 e)))
+    (dotom .put m (int r) e)))
 
 ;;; Already this is sufficient to get some algebraic matrix
 ;;; properties, such as
@@ -339,12 +340,12 @@
 
 (defmethod matrix ::double-array
   ([doubles] (matrix doubles nil))
-  ([doubles meta]
+  ([^doubles doubles meta]
      (matrix (DoubleMatrix. doubles) meta)))
 
 (defmethod matrix ::double-array-2D
   ([doubles] (matrix doubles nil))
-  ([doubles meta]
+  ([^"[[D" doubles meta]
      (matrix (DoubleMatrix. doubles) meta)))
 
 (defmethod matrix ::collection
@@ -1466,10 +1467,7 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PIndexedSetting
   (set-1d [m i x]
-    ;; We don't know the 1*x or x*1, so just guess. Yuck
-    (try (matrix (set (matrix m) 0 i x))
-         (catch Throwable t
-           (matrix (set (matrix m) i 0 x)))))
+    (throw (UnsupportedOperationException. "Only 2-d set on matrices is supported.")))
 
   (set-2d [m row column x] (matrix (set (matrix m) row column x)))
   (set-nd [m indexes x]
@@ -1614,7 +1612,8 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PIndexedAccess
   (get-1d [m i] (mget m i))
-  (get-2d [m row column] (mget m row column))
+  (get-2d [m row column] 
+    (throw (UnsupportedOperationException. "Only 1-d get on vectors is supported.")))
   (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 1)
@@ -1623,8 +1622,9 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PIndexedSetting
   (set-1d [m i x]
-    ;; We don't know the 1*x or x*1, so just guess. Yuck
-    (vector (set (matrix m) i 0 x)))
+    (let [v (vector m)]
+      (set v i x)
+      v))
 
   (set-nd [m indexes x]
     (if (== (count indexes) 1)
