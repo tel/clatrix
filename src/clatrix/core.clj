@@ -237,12 +237,20 @@
   a sub-matrix. Pass in a single arg, i, so do row-first traversal index
   access."
   ([^Matrix m i]
-     (let [out (dotom .get m (int-arraytise i))]
+     (let [out (if (coll? i)
+                 (dotom .get m (int-array i))
+                 (dotom .get m (int i)))]
        (if (number? out)
          out
          (matrix out))))
   ([^Matrix m r c]
-     (let [out (dotom .get m (int-arraytise r) (int-arraytise c))]
+     (let [out (if (coll? r)
+                 (if (coll? c)
+                   (dotom .get m (int-array r) (int-array c))
+                   (dotom .get m (int-array r) (int c)))
+                 (if (coll? c)
+                   (dotom .get m (int r) (int-array c))
+                   (dotom .get m (int r) (int c))))]
        (if (number? out)
          out
          (matrix out)))))
