@@ -213,6 +213,8 @@
                                         (c/dense (c/* 5 (c/eye n))))))
 (expect (double (* n 5)) (reduce + (map (partial reduce +)
                                         (c/dense (c/map (partial * 5) (c/eye n))))))
+;; reshaping
+(expect F (c/reshape (c/reshape F m n) n m))
 
 ;; norm and normalize
 (expect (double m)
