@@ -29,10 +29,12 @@
   (is (m/equals [1 2 3] (m/matrix :clatrix [1 2 3]))))
 
 (deftest maths-tests
-  (let [m (m/matrix :clatrix [[1 2] [3 4]])]
+  (let [m (m/matrix :clatrix [[1 2] [3 4]])
+        v (m/matrix :clatrix [10 20])]
     (is (m/numerical? m))
     (is (m/equals m (m/add m 0)))
-    (is (m/equals m (m/mul m 1)))))
+    (is (m/equals m (m/mul m 1)))
+    (is (m/equals [50 110] (m/mmul m v)))))
 
 (deftest matrix-tests
   (let [m (m/matrix :clatrix [[1 2 3] [3 4 5]])]
