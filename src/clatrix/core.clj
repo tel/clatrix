@@ -771,14 +771,14 @@ Uses the same algorithm as java's default Random constructor."
 (defn slice-row
   "Slices a matrix to produce a vector representing a single row."
   ([^Matrix m rownum]
-    (let [rv (.getRow (.me m) (int rownum))]
+    (let [rv (.getRow ^DoubleMatrix (.me m) (int rownum))]
       (.reshape rv (.columns rv) 1)
       (Vector. rv nil))))
 
 (defn slice-column
   "Slices a matrix to produce a vector representing a single row."
   ([^Matrix m colnum]
-    (let [cv (.getColumn (.me m) (int colnum))]
+    (let [cv (.getColumn ^DoubleMatrix (.me m) (int colnum))]
       (Vector. cv nil))))
 
 ;;; # Hinting
@@ -971,7 +971,7 @@ Uses the same algorithm as java's default Random constructor."
                (and (vec? a) (vec? b))
                   (vector (dotom .mul a ^DoubleMatrix (me b)))
                :else       
-                 (case (max (mp/dimensionality a) (mp/dimensionality b))
+                 (case (long (max (mp/dimensionality a) (mp/dimensionality b)))
                    0 (* (mp/get-0d a) (mp/get-0d b))
                    1 (mult (vector a) (vector b))
                    2 (mult (matrix a) (matrix b))
@@ -1010,7 +1010,7 @@ Uses the same algorithm as java's default Random constructor."
 (defn sum
   "`(sum M)` computes the sum of all elements of M"
   [m]
-  (.sum (me m)))
+  (.sum ^DoubleMatrix (me m)))
 
 (defn dot
   "`dot` computes the inner product between two vectors. This is
@@ -1135,7 +1135,7 @@ Uses the same algorithm as java's default Random constructor."
               `:value` for SVD values only
   "
   [^Matrix A & {:keys [type] :or {type :sparse}}]
-  (let [[U L V] (if (= type :full)
+  (let [[^DoubleMatrix U ^DoubleMatrix L ^DoubleMatrix V] (if (= type :full)
                   (dotom Singular/fullSVD A)
                   (dotom Singular/sparseSVD A))
         left (matrix U)
@@ -1182,7 +1182,7 @@ Uses the same algorithm as java's default Random constructor."
                                       (seq (.toArray (.diag L))))]
       ;; Update L with the new spectrum
       (doseq [i (range n)]
-        (.put L i i (nth new-spect i)))
+        (.put L (int i) (int i) ^ComplexDouble (nth new-spect i)))
       ;; Compute the product
       (-> V
         (.mmul L)
@@ -1262,7 +1262,7 @@ Uses the same algorithm as java's default Random constructor."
                  (range m)
                  (concat (range nbits) (range (clojure.core/- m nbits) m)))
         fmt (str "% ." prec "e ")
-        header (apply format " A %dx%d matrix\n" (size mat))]
+        ^String header (apply format " A %dx%d matrix\n" (size mat))]
     ;; Print the header
     (.write w header)
     (.write w " ")
@@ -1379,7 +1379,7 @@ Uses the same algorithm as java's default Random constructor."
 
 
 (defn- construct-clatrix [m]
-  (case (mp/dimensionality m)
+  (case (long (mp/dimensionality m))
         0 (double m)
         1 (vector m)
         2 (matrix m)
@@ -1679,11 +1679,11 @@ Uses the same algorithm as java's default Random constructor."
   mp/PSliceSeq
   ;; sequence of elements
   (get-major-slice-seq [m]
-    (seq (.toArray (me m))))
+    (seq (.toArray ^DoubleMatrix (me m))))
 
   mp/PFunctionalOperations
   (element-seq [m]
-    (seq (.toArray (me m))))
+    (seq (.toArray ^DoubleMatrix (me m))))
   (element-map
     ([m f]
        ;; TODO: make faster version, note clatrix overrides cljure.core/map
