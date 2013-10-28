@@ -35,6 +35,14 @@
     (is (m/equals [1 3] (first (m/columns m))))
     (is (m/equals [1 2 3] (first (m/rows m))))))
 
+(deftest construction-tests
+  (let [m (c/matrix [[1 2] [3 4]])
+        v (c/vector [1 2 3])]
+    (is (= [2 2] (m/shape m)))
+    (is (= [3] (m/shape v)))
+    (is (== 10.0 (m/esum m)))
+    (is (== 6.0 (m/esum v)))))
+
 (deftest instance-tests
   (comp/instance-test (c/matrix [[1 2] [3 4]]))
   (comp/instance-test (c/vector [1 2]))
