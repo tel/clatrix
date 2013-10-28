@@ -10,6 +10,8 @@
            [org.jblas.util Random]
            [java.io Writer]))
 
+(set! *warn-on-reflection* true)
+
 ;;; Clatrix is a fast matrix library for Clojure written atop [JBlas](http://jblas.org/)'
 ;;; ATLAS/LAPACK bindings. It's not intended to be the alpha and omega
 ;;; of linear algebra hosted on Clojure, but it should provide most of
@@ -48,7 +50,7 @@
 
   (equiv [this that]
     (cond
-     (matrix? that) (.equals (.me this) (.me that))
+     (matrix? that) (.equals (.me ^Matrix this) (.me ^Matrix that))
      (coll? that) (and (= (count (flatten this)) (count (flatten that)))
                        (every? true? (clojure.core/map #(== %1 %2) (flatten this) (flatten that))))
      :else (.equals (.me this) that)))
@@ -66,7 +68,7 @@
   (seq [this]
     "Return a seq of rows for a 2D or a seq of entries for a 1D matrix"
     (if (vector-matrix? this)
-      (seq (.toArray (.me this)))
+      (seq (.toArray ^DoubleMatrix (.me ^Matrix this)))
       (clojure.core/map matrix (row-list (.me this)))))
 
   (first [this]
@@ -108,7 +110,7 @@
 
   (equiv [this that]
     (cond
-     (vec? that) (.equals (.me this) (.me that))
+     (vec? that) (.equals (.me this) (.me ^Vector that))
      (coll? that) (and (= (count this) (count that))
                        (every? true? (clojure.core/map #(== %1 %2) this that)))
      :else (.equals (.me this) that)))
@@ -126,7 +128,7 @@
 
   (seq [this]
     "Return a seq of entries for a 1D matrix"
-    (seq (.toArray (.me this))))
+    (seq (.toArray ^DoubleMatrix (.me ^Vector this))))
 
   (first [this]
     (first (seq this)))
@@ -154,7 +156,7 @@
     (.me ^Matrix  mat)))
 
 (defmacro dotom [name m & args]
-  `(~name ^DoubleMatrix (me ~m) ~@args))
+  `(~name ~(vary-meta `(me ~m) assoc :tag 'org.jblas.DoubleMatrix) ~@args))
 
 ;;; # Java interop
 ;;;
@@ -207,7 +209,7 @@
 (defn vector-matrix?
   "Is m nx1 or 1xn"
   [^Matrix m]
-  (or (.isRowVector (.me m)) (.isColumnVector (.me m))))
+  (or (.isRowVector ^DoubleMatrix (.me m)) (.isColumnVector ^DoubleMatrix (.me m))))
 
 (defn row?    [m] (and (matrix? m) (== 1 (first (size m)))))
 (defn column? [m] (and (matrix? m) (== 1 (second (size m)))))
@@ -313,7 +315,7 @@
 
 (defmethod matrix ::matrix
   ([^Matrix m & _]
-     (Matrix. (.dup (.me m)) (.meta m))))
+     (Matrix. (.dup ^DoubleMatrix (.me m)) (.meta m))))
 
 (defmethod matrix ::double-matrix
   ([^DoubleMatrix x]
@@ -328,7 +330,7 @@
      (if (empty? seq-of-seqs)
        (Matrix. DoubleMatrix/EMPTY meta-args)
        (if (number? (first seq-of-seqs))
-         (matrix (DoubleMatrix. (into-array Double/TYPE (clojure.core/map double seq-of-seqs)))
+         (matrix (DoubleMatrix. (double-array (clojure.core/map double seq-of-seqs)))
                  meta-args)
          (let [lengths (clojure.core/map count seq-of-seqs)
                flen    (first lengths)]
