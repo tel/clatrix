@@ -261,6 +261,7 @@
   ([m r c] `(dotom .get ~m (int ~r) (int ~c))))
 
 (defn set
+  "Sets a value in a matrix or vector. Mutates the matrix or vector."
   ([^Matrix m ^long r ^long c ^double e]
     (dotom .put m (int r) (int c) e))
   ([^Vector m ^long r ^double e]
