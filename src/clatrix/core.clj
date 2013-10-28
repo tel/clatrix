@@ -203,7 +203,7 @@
   (cond
     (matrix? m) [(nrows m) (ncols m)]
     (vec? m) [(nrows m)]
-    (m/array? m) (m/shape m) 
+    (m/array? m) (m/shape m)
     :else (throw (IllegalArgumentException. "Not a Vector or Matrix"))))
 
 (defn vector-matrix?
@@ -254,6 +254,11 @@
        (if (number? out)
          out
          (matrix out)))))
+
+(defmacro mget
+  "Faster implementation of `get`, a single value by indices only."
+  ([m r] `(dotom .get ~m ~r))
+  ([m r c] `(dotom .get ~m ~r ~c)))
 
 (defn set
   ([^Matrix m ^long r ^long c ^double e]
@@ -428,17 +433,22 @@
 
 ;;; ## Reshaping
 
-(defn reshape
-  "`(reshape A p q)` coerces an `n`x`m` matrix to be `p`x`q` so long
-  as `pq = nm`."
+(defn reshape!
+  "reshape! modifies matrix in place."  
   [^Matrix A p q]
   (let [[n m] (size A)]
     (if (= (clojure.core/* n m) (clojure.core/* p q))
-      (dotom A p q)
+      (matrix (dotom .reshape A p q))
       (throw+ {:exception "Cannot change the number of elements during a reshape."
                :previous (clojure.core/* n m)
                :new (clojure.core/* p q)}))))
 
+(defn reshape
+  "`(reshape A p q)` coerces an `n`x`m` matrix to be `p`x`q` so long
+  as `pq = nm`."
+  [^Matrix A p q]
+  (reshape! (matrix A) p q))
+  
 ;;; ## Sparse and indexed builds
 ;;;
 ;;; Sometimes your matrix is mostly zeros and it's easy to specify the
@@ -1446,8 +1456,8 @@ Uses the same algorithm as java's default Random constructor."
                                             (throw (IllegalArgumentException. "Matrix only has dimensions 0 and 1")))))
 
   mp/PIndexedAccess
-  (get-1d [m i] (get m i))
-  (get-2d [m row column] (get m row column))
+  (get-1d [m i] (mget m i))
+  (get-2d [m row column] (mget m row column))
   (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 2)
@@ -1603,8 +1613,8 @@ Uses the same algorithm as java's default Random constructor."
                                             (throw (IllegalArgumentException. "Vector only has dimension 0")))))
 
   mp/PIndexedAccess
-  (get-1d [m i] (get m i))
-  (get-2d [m row column] (get m row column))
+  (get-1d [m i] (mget m i))
+  (get-2d [m row column] (mget m row column))
   (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 1)
