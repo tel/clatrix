@@ -257,8 +257,8 @@
 
 (defmacro mget
   "Faster implementation of `get`, a single value by indices only."
-  ([m r] `(dotom .get ~m ~r))
-  ([m r c] `(dotom .get ~m ~r ~c)))
+  ([m r] `(dotom .get ~m (int ~r)))
+  ([m r c] `(dotom .get ~m (int ~r) (int ~c))))
 
 (defn set
   ([^Matrix m ^long r ^long c ^double e]
