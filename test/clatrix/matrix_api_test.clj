@@ -10,6 +10,7 @@
 (deftest regressions
   (let [m (m/matrix :clatrix [1 2 3])
         wm (clojure.core.matrix.impl.wrappers/wrap-nd m)]
+    (is (c/clatrix? m))
     (is (== 1 (dimensionality m)))
     (is (= [3] (seq (m/shape m))))
     (is (m/equals m wm))
@@ -26,6 +27,12 @@
   (is (= [1.0 2.0 3.0] (m/slices (m/matrix :clatrix [1 2 3]))))
   (is (= [1.0 2.0 3.0 4.0] (m/eseq (m/matrix :clatrix [[1 2] [3 4]]))))
   (is (m/equals [1 2 3] (m/matrix :clatrix [1 2 3]))))
+
+(deftest maths-tests
+  (let [m (m/matrix :clatrix [[1 2] [3 4]])]
+    (is (m/numerical? m))
+    (is (m/equals m (m/add m 0)))
+    (is (m/equals m (m/mul m 1)))))
 
 (deftest matrix-tests
   (let [m (m/matrix :clatrix [[1 2 3] [3 4 5]])]
