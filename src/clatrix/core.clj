@@ -334,12 +334,12 @@
 
 (defmethod matrix ::double-array
   ([doubles] (matrix doubles nil))
-  ([doubles meta]
+  ([^doubles doubles meta]
      (matrix (DoubleMatrix. doubles) meta)))
 
 (defmethod matrix ::double-array-2D
   ([doubles] (matrix doubles nil))
-  ([doubles meta]
+  ([^"[[D" doubles meta]
      (matrix (DoubleMatrix. doubles) meta)))
 
 (defmethod matrix ::collection
