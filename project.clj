@@ -1,4 +1,4 @@
-(defproject clatrix/clatrix "0.3.0-SNAPSHOT"
+(defproject clatrix/clatrix "0.4.0-SNAPSHOT"
   :description "Because using matrices in Clojure needs to not suck."
   :url "http://tel.github.com/clatrix"
   :license {:name "MIT License"
@@ -10,6 +10,6 @@
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [slingshot "0.10.3"]
                  [org.jblas/jblas "1.2.3"]
-                 [net.mikera/core.matrix "0.7.2"]]
+                 [net.mikera/core.matrix "0.13.0"]]
   :profiles {:dev {:dependencies [[criterium/criterium "0.4.1"]
                                   [expectations "1.4.41"]]}})
