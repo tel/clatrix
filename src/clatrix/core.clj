@@ -262,9 +262,9 @@
 
 (defn set
   ([^Matrix m ^long r ^long c ^double e]
-    (dotom .put m r c e))
+    (dotom .put m (int r) (int c) e))
   ([^Vector m ^long r ^double e]
-    (dotom .put m r 1 e)))
+    (dotom .put m (int r) e)))
 
 ;;; Already this is sufficient to get some algebraic matrix
 ;;; properties, such as
@@ -1466,10 +1466,7 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PIndexedSetting
   (set-1d [m i x]
-    ;; We don't know the 1*x or x*1, so just guess. Yuck
-    (try (matrix (set (matrix m) 0 i x))
-         (catch Throwable t
-           (matrix (set (matrix m) i 0 x)))))
+    (throw (UnsupportedOperationException. "Only 2-d set on matrices is supported.")))
 
   (set-2d [m row column x] (matrix (set (matrix m) row column x)))
   (set-nd [m indexes x]
@@ -1614,7 +1611,8 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PIndexedAccess
   (get-1d [m i] (mget m i))
-  (get-2d [m row column] (mget m row column))
+  (get-2d [m row column] 
+    (throw (UnsupportedOperationException. "Only 1-d get on vectors is supported.")))
   (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 1)
@@ -1623,8 +1621,9 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PIndexedSetting
   (set-1d [m i x]
-    ;; We don't know the 1*x or x*1, so just guess. Yuck
-    (vector (set (matrix m) i 0 x)))
+    (let [v (vector m)]
+      (set v i x)
+      v))
 
   (set-nd [m indexes x]
     (if (== (count indexes) 1)
