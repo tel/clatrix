@@ -150,10 +150,12 @@
 
   clojure.lang.Sequential)
 
-(defn me [mat]
-  (if (vec? mat)
-    (.me ^Vector  mat)
-    (.me ^Matrix  mat)))
+(defn me 
+  "Accesses the underlying JBlas DoubleMatrix of a matrix or vector."
+  (^DoubleMatrix [mat]
+    (if (vec? mat)
+      (.me ^Vector mat)
+      (.me ^Matrix mat))))
 
 (defmacro dotom [name m & args]
   `(~name ~(vary-meta `(me ~m) assoc :tag 'org.jblas.DoubleMatrix) ~@args))
@@ -1688,6 +1690,14 @@ Uses the same algorithm as java's default Random constructor."
           a (m/coerce m a)
           ]
       (- m a)))
+  
+  mp/PMatrixAddMutable
+  (matrix-add! [m a]
+    (let [a (mp/broadcast-like m a)]
+      (.addi (me m) (me a))))
+  (matrix-sub! [m a]
+    (let [a (mp/broadcast-like m a)]
+      (.subi (me m) (me a))))
 
   mp/PVectorOps
   (vector-dot [a b]
