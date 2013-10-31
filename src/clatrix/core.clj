@@ -1531,6 +1531,14 @@ Uses the same algorithm as java's default Random constructor."
     (let [[m a] (mp/broadcast-compatible m a)
           a (m/coerce m a)]
       (- m a)))
+   
+  mp/PMatrixAddMutable
+  (matrix-add! [m a]
+    (let [a (mp/broadcast-like m a)]
+      (.addi (me m) (me a))))
+  (matrix-sub! [m a]
+    (let [a (mp/broadcast-like m a)]
+      (.subi (me m) (me a))))
 
   mp/PMatrixOps
   (trace [m]
