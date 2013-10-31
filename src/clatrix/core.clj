@@ -259,7 +259,7 @@
   ([^Matrix m ^long r ^long c ^double e]
     (dotom .put m r c e))
   ([^Vector m ^long r ^double e]
-    (dotom .put m r 1 e)))
+    (dotom .put m r e)))
 
 ;;; Already this is sufficient to get some algebraic matrix
 ;;; properties, such as
@@ -891,12 +891,27 @@ Uses the same algorithm as java's default Random constructor."
 ;; (last (for ...)) seems like a strange
 (defn map!
   "Inplace version of map."
-  [fun ^Matrix mat]
-  (let [[n m] (size mat)]
-    (last
-     (for [i (range n)
-           j (range m)]
-       (set mat i j (fun (get mat i j)))))))
+  ([fun a]
+    (if (matrix? a)
+      (let [[n m] (size a)]
+        (dotimes [i n]
+          (dotimes [j m]
+            (set a i j (fun (get a i j))))))
+      (let [[n] (size a)]
+        (dotimes [i n]
+          (set a i (fun (get a i))))))
+    a)
+  
+  ([fun ^Matrix a ^Matrix b]
+    (if (matrix? a)
+      (let [[n m] (size a)]
+        (dotimes [i n]
+          (dotimes [j m]
+            (set a i j (fun (get a i j) (get b i j))))))
+      (let [[n] (size a)]
+        (dotimes [i n]
+          (set a i (fun (get a i) (get b i))))))
+    a))
 
 (defn ereduce
   "Quick and dirty reduce."
@@ -1558,8 +1573,12 @@ Uses the same algorithm as java's default Random constructor."
     ([m f a]
        (clojure.core/map f (flatten m) a)))
 
-  (element-map!
-    ([m f] (map! f m)))
+  (element-map! 
+    ([m f]
+      (map! f m))
+    ([m f a]
+      (map! f m (mp/broadcast-like m a))))
+  
   (element-reduce
     ([m f]
       (ereduce f m))
@@ -1700,8 +1719,11 @@ Uses the same algorithm as java's default Random constructor."
        ;; TODO: make faster version, note clatrix overrides cljure.core/map
        (vector (clojure.core/mapv f m (vector a)))))
 
-  (element-map! [m f]
-    (map! f m))
+  (element-map! 
+    ([m f]
+      (map! f m))
+    ([m f a]
+      (map! f m (mp/broadcast-like m a))))
   (element-reduce
     ([m f] (ereduce f m))
     ([m f init] (ereduce f init m))))

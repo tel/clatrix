@@ -36,6 +36,14 @@
     (is (m/equals m (m/mul m 1)))
     (is (m/equals [50 110] (m/mmul m v)))))
 
+(deftest map-tests
+  (let [v (c/vector [1 2 3])
+        v2 (c/vector [10 20 30])]
+    (is (= (c/size v) (c/size v2) [3]))
+    (is (m/equals [2 4 6] (m/emap clojure.core/+ v v)))
+    (m/emap! clojure.core/+ v v2)
+    (is (m/equals [11 22 33] v))))
+
 (deftest matrix-tests
   (let [m (m/matrix :clatrix [[1 2 3] [3 4 5]])]
     (is (== 2 (m/dimensionality m)))
