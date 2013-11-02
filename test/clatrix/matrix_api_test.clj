@@ -60,8 +60,12 @@
     (is (== 10.0 (m/esum m)))
     (is (== 6.0 (m/esum v)))))
 
+(deftest sequence-tests
+  (is (= [1.0 2.0 3.0 4.0] (m/eseq (c/matrix [[1 2] [3 4]])))))
+
 (deftest instance-tests
   (comp/instance-test (c/matrix [[1 2] [3 4]]))
+  (comp/instance-test (c/matrix [[1 2] [3 4] [5 6]]))
   (comp/instance-test (c/vector [1 2]))
 )
 
