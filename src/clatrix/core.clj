@@ -1479,14 +1479,15 @@ Uses the same algorithm as java's default Random constructor."
   (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 2)
-        (mp/get-2d m (first indexes) (second indexes))
+        (mget m (first indexes) (second indexes))
         (throw (UnsupportedOperationException. "Only 2-d get on matrices is supported.")))))
 
   mp/PIndexedSetting
   (set-1d [m i x]
     (throw (UnsupportedOperationException. "Only 2-d set on matrices is supported.")))
 
-  (set-2d [m row column x] (matrix (set (matrix m) row column x)))
+  (set-2d [m row column x] 
+    (let [m (matrix m)] (set m row column x)))
   (set-nd [m indexes x]
     (if (== (count indexes) 2)
         (mp/set-2d m (first indexes) (second indexes) x)
@@ -1646,7 +1647,7 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PDimensionInfo
   (dimensionality [m] 1)
-  (get-shape  [m] [(.rows (me m))])
+  (get-shape  [m] [(nrows m)])
   (is-scalar? [m] false)
   (is-vector? [m] true )
   (dimension-count [m dimension-number] (case (long dimension-number)
@@ -1660,7 +1661,7 @@ Uses the same algorithm as java's default Random constructor."
   (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 1)
-        (mp/get-1d m (first indexes))
+        (mget m (first indexes))
         (throw (UnsupportedOperationException. "Only 1-d get on vectors is supported.")))))
 
   mp/PIndexedSetting
