@@ -379,13 +379,13 @@
   ([m]
     (cond
       (clatrix? m) m
-      (number? m) m
+      (number? m) (double m)
       (m/array? m)
          (case (long (m/dimensionality m))
            0 (double (mp/get-0d m))
            1 (vector m)
            2 (matrix m))
-      :else (double m))))
+      :else m)))
 
 (defn diag
   "`diag` creates a diagonal matrix from a seq of numbers or extracts
@@ -425,7 +425,7 @@
   [^Matrix A p q]
   (let [[n m] (size A)]
     (if (= (clojure.core/* n m) (clojure.core/* p q))
-      (dotom A p q)
+      (dotom .reshape A p q)
       (throw+ {:exception "Cannot change the number of elements during a reshape."
                :previous (clojure.core/* n m)
                :new (clojure.core/* p q)}))))
@@ -904,7 +904,7 @@ Uses the same algorithm as java's default Random constructor."
           (set a i (fun (get a i))))))
     a)
   
-  ([fun ^Matrix a ^Matrix b]
+  ([fun a b]
     (if (matrix? a)
       (let [[n m] (size a)]
         (dotimes [i n]
@@ -1492,6 +1492,14 @@ Uses the same algorithm as java's default Random constructor."
   mp/PCoercion
   (coerce-param [m param]
     (clatrix param))
+  
+  mp/PBroadcastLike
+    (broadcast-like [m a]
+      (clatrix (mp/broadcast a (mp/get-shape m))))
+    
+  mp/PBroadcastCoerce
+    (broadcast-coerce [m a]
+      (clatrix (mp/broadcast a (mp/get-shape m))))
 
   mp/PConversion
   (convert-to-nested-vectors [m]
@@ -1567,7 +1575,7 @@ Uses the same algorithm as java's default Random constructor."
     (condp = dimension
       0 (slice-row m i)
       1 (slice-column m i)
-      (throw (UnsupportedOperationException. "Clatrix only support 2-d"))))
+      (throw (UnsupportedOperationException. "Matrix only has 2 dimensions"))))
 
   mp/PSliceSeq
   ;; API wants a seq of Matrices
@@ -1579,9 +1587,16 @@ Uses the same algorithm as java's default Random constructor."
     (flatten m))
   (element-map
     ([m f]
-       (matrix (map f m)))
+       (map f m)) ;; note: using Clatrix map function, not clojure.core
     ([m f a]
-       (clojure.core/map f (flatten m) a)))
+       (let [rc (long (nrows m))
+             cc (long (ncols m))
+             a (mp/broadcast-coerce m a)
+             result (matrix m)]
+         (dotimes [i rc]
+           (dotimes [j cc]
+             (set result i j (f (get m i j) (get a i j)))))
+         result)))
 
   (element-map! 
     ([m f]
@@ -1658,7 +1673,15 @@ Uses the same algorithm as java's default Random constructor."
       (cond 
         (and (== 1 (count shape)) (== (first shape) (nrows m))) m
         (and (== 2 (count shape)) (== (second shape) (nrows m))) (matrix (vec (repeat (first shape) m)))))
-  
+
+  mp/PBroadcastLike
+    (broadcast-like [m a]
+      (clatrix (mp/broadcast a (mp/get-shape m))))
+    
+  mp/PBroadcastCoerce
+    (broadcast-coerce [m a]
+      (clatrix (mp/broadcast a (mp/get-shape m))))
+    
   mp/PConversion
   (convert-to-nested-vectors [m]
     (to-vecs m))
@@ -1673,8 +1696,7 @@ Uses the same algorithm as java's default Random constructor."
   (matrix-multiply [m a]
     (* m (m/coerce m a)))
   (element-multiply [m a]
-    (let [a (m/broadcast-like m a)
-          a (clatrix a)]
+    (let [a (m/broadcast-coerce m a)]
       (mult m a)))
 
   mp/PVectorTransform
@@ -1741,7 +1763,7 @@ Uses the same algorithm as java's default Random constructor."
     ([m f]
       (map! f m))
     ([m f a]
-      (map! f m (mp/broadcast-like m a))))
+      (map! f m (mp/broadcast-coerce m a))))
   (element-reduce
     ([m f] (ereduce f m))
     ([m f init] (ereduce f init m))))
