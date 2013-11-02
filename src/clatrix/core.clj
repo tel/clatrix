@@ -202,12 +202,13 @@
 (promote-mfun* defn nrows .rows)
 
 (defn size 
-  "Returns the size of a Clatrix matri, as a vector of dimension sizes [rows, cols]."
+  "Returns the size of a Clatrix matrix or vector, as a vector of dimension sizes 
+   i.e. [rows, cols] for a Matrix and [rows] for a Vector."
   ([m]
     (cond
       (matrix? m) [(nrows m) (ncols m)]
       (vec? m) [(nrows m)]
-      (m/array? m) (m/shape m)
+      (m/array? m) (m/shape m) ;; fallback for other core.matrix array types
       :else (throw (IllegalArgumentException. "Not a valid Vector or Matrix")))))
 
 (defn vector-matrix?
