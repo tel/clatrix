@@ -1467,11 +1467,11 @@ Uses the same algorithm as java's default Random constructor."
   (get-shape  [m] (size m))
   (is-scalar? [m] false)
   (is-vector? [m] false )
-  (dimension-count [m dimension-number] (let [[r c] (size m)]
-                                          (condp = dimension-number
-                                            0 r
-                                            1 c
-                                            (throw (IllegalArgumentException. "Matrix only has dimensions 0 and 1")))))
+  (dimension-count [m dimension-number] 
+    (case (long dimension-number)
+      0 (nrows m)
+      1 (ncols m)
+      (throw (IllegalArgumentException. "Matrix only has dimensions 0 and 1"))))
 
   mp/PIndexedAccess
   (get-1d [m i] (mget m i))
@@ -1597,7 +1597,7 @@ Uses the same algorithm as java's default Random constructor."
       (throw (UnsupportedOperationException. "Matrix only has 2 dimensions"))))
 
   mp/PSliceSeq
-  ;; API wants a seq of Matrices
+  ;; API wants a seq of Vectors
   (get-major-slice-seq [m]
     (clojure.core/map #(slice-row m %) (range (nrows m))))
 
@@ -1646,13 +1646,12 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PDimensionInfo
   (dimensionality [m] 1)
-  (get-shape  [m] [(first (size m))])
+  (get-shape  [m] [(.rows (me m))])
   (is-scalar? [m] false)
   (is-vector? [m] true )
-  (dimension-count [m dimension-number] (let [[r c] (size m)]
-                                          (condp = dimension-number
-                                            0 r
-                                            (throw (IllegalArgumentException. "Vector only has dimension 0")))))
+  (dimension-count [m dimension-number] (case (long dimension-number)
+                                          0 (nrows m)
+                                          (throw (IllegalArgumentException. "Vector only has dimension 0"))))
 
   mp/PIndexedAccess
   (get-1d [m i] (mget m i))
@@ -1774,10 +1773,10 @@ Uses the same algorithm as java's default Random constructor."
     (seq (.toArray ^DoubleMatrix (me m))))
   (element-map
     ([m f]
-       ;; TODO: make faster version, note clatrix overrides cljure.core/map
+       ;; TODO: make faster version, note clatrix overrides clojure.core/map
        (vector (clojure.core/mapv f m)))
     ([m f a]
-       ;; TODO: make faster version, note clatrix overrides cljure.core/map
+       ;; TODO: make faster version, note clatrix overrides clojure.core/map
        (vector (clojure.core/mapv f m (vector a)))))
 
   (element-map! 
