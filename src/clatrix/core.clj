@@ -205,7 +205,7 @@
   (cond
     (matrix? m) [(nrows m) (ncols m)]
     (vec? m) [(nrows m)]
-    (m/array? m) (m/shape m) 
+    (m/array? m) (m/shape m)
     :else (throw (IllegalArgumentException. "Not a Vector or Matrix"))))
 
 (defn vector-matrix?
@@ -257,11 +257,17 @@
          out
          (matrix out)))))
 
+(defmacro mget
+  "Faster implementation of `get`, a single value by indices only."
+  ([m r] `(dotom .get ~m (int ~r)))
+  ([m r c] `(dotom .get ~m (int ~r) (int ~c))))
+
 (defn set
+  "Sets a value in a matrix or vector. WARNING: Mutates the matrix or vector."
   ([^Matrix m ^long r ^long c ^double e]
-    (dotom .put m r c e))
+    (dotom .put m (int r) (int c) e))
   ([^Vector m ^long r ^double e]
-    (dotom .put m r e)))
+    (dotom .put m (int r) e)))
 
 ;;; Already this is sufficient to get some algebraic matrix
 ;;; properties, such as
@@ -315,13 +321,14 @@
 (derive java.util.Collection ::collection)
 (derive DoubleMatrix ::double-matrix)
 (derive Matrix ::matrix)
+(derive (Class/forName "[D") ::double-array)
+(derive (Class/forName "[[D") ::double-array-2D)
 
 (defmulti matrix
   "`matrix` creates a `Matrix` from a seq of seqs, specifying the
   matrix in row-major order. The length of each seq must be
   identical or an error is throw."
   (fn [m & args] (class m)))
-
 
 (defmethod matrix ::matrix
   ([^Matrix m & _]
@@ -332,6 +339,16 @@
    (matrix x nil))
   ([^DoubleMatrix x meta]
    (Matrix. x meta)))
+
+(defmethod matrix ::double-array
+  ([doubles] (matrix doubles nil))
+  ([^doubles doubles meta]
+     (matrix (DoubleMatrix. doubles) meta)))
+
+(defmethod matrix ::double-array-2D
+  ([doubles] (matrix doubles nil))
+  ([^"[[D" doubles meta]
+     (matrix (DoubleMatrix. doubles) meta)))
 
 (defmethod matrix ::collection
   ([s]
@@ -419,9 +436,8 @@
 
 ;;; ## Reshaping
 
-(defn reshape
-  "`(reshape A p q)` coerces an `n`x`m` matrix to be `p`x`q` so long
-  as `pq = nm`."
+(defn reshape!
+  "reshape! modifies matrix in place."  
   [^Matrix A p q]
   (let [[n m] (size A)]
     (if (= (clojure.core/* n m) (clojure.core/* p q))
@@ -430,6 +446,12 @@
                :previous (clojure.core/* n m)
                :new (clojure.core/* p q)}))))
 
+(defn reshape
+  "`(reshape A p q)` coerces an `n`x`m` matrix to be `p`x`q` so long
+  as `pq = nm`."
+  [^Matrix A p q]
+  (reshape! (matrix A) p q))
+  
 ;;; ## Sparse and indexed builds
 ;;;
 ;;; Sometimes your matrix is mostly zeros and it's easy to specify the
@@ -1452,8 +1474,8 @@ Uses the same algorithm as java's default Random constructor."
                                             (throw (IllegalArgumentException. "Matrix only has dimensions 0 and 1")))))
 
   mp/PIndexedAccess
-  (get-1d [m i] (get m i))
-  (get-2d [m row column] (get m row column))
+  (get-1d [m i] (mget m i))
+  (get-2d [m row column] (mget m row column))
   (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 2)
@@ -1462,10 +1484,7 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PIndexedSetting
   (set-1d [m i x]
-    ;; We don't know the 1*x or x*1, so just guess. Yuck
-    (try (matrix (set (matrix m) 0 i x))
-         (catch Throwable t
-           (matrix (set (matrix m) i 0 x)))))
+    (throw (UnsupportedOperationException. "Only 2-d set on matrices is supported.")))
 
   (set-2d [m row column x] (matrix (set (matrix m) row column x)))
   (set-nd [m indexes x]
@@ -1636,8 +1655,9 @@ Uses the same algorithm as java's default Random constructor."
                                             (throw (IllegalArgumentException. "Vector only has dimension 0")))))
 
   mp/PIndexedAccess
-  (get-1d [m i] (get m i))
-  (get-2d [m row column] (get m row column))
+  (get-1d [m i] (mget m i))
+  (get-2d [m row column] 
+    (throw (UnsupportedOperationException. "Only 1-d get on vectors is supported.")))
   (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 1)
@@ -1646,8 +1666,9 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PIndexedSetting
   (set-1d [m i x]
-    ;; We don't know the 1*x or x*1, so just guess. Yuck
-    (vector (set (matrix m) i 0 x)))
+    (let [v (vector m)]
+      (set v i x)
+      v))
 
   (set-nd [m indexes x]
     (if (== (count indexes) 1)

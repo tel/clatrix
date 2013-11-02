@@ -1,8 +1,11 @@
 (ns clatrix.core-test
   (:use expectations)
-  (:require [clatrix.core :as c])
+  (:require [clatrix.core :as c]
+            [criterium.core :as crit])
   (:import [clatrix.core Matrix Vector]
            [java.io StringReader PushbackReader]))
+
+(def ^:dynamic *bench* false)
 
 (defn read* [str]
   (read (PushbackReader. (StringReader. str))))
@@ -112,9 +115,21 @@
                c/clatrix? true
                count 3))
 
-(let [z (rand)]
-  (c/set A 0 0 z)
-  (expect z (c/get A 0 0)))
+(let [z (rand)
+      A-copy (c/matrix A)]
+  (c/set A-copy 0 0 z) ;; note this performs mutation
+  (expect z (c/get A-copy 0 0)))
+
+(expect 1.0 (c/mget V 0))
+(expect 3.0 (c/mget V 2))
+
+(expect 2.0 (c/mget M 0 1))
+(expect 6.0 (c/mget M 1 2))
+
+(if (true? *bench*)
+  (do
+    (crit/bench (dotimes [i n] (dotimes [j m] (c/mget F i j))))
+    (crit/bench (dotimes [i n] (dotimes [j m] (c/get F i j))))))
 
 ;; Check idempotence of matrix constructor
 (expect A (c/matrix (c/matrix A) :unused-arg :another-unused-arg))
@@ -161,6 +176,9 @@
          (c/matrix [7 22 37 52 67 82 97 112 127 142])
          (c/matrix [6 21 36 51 66 81 96 111 126 141])]
         (c/cols F [4 7 6]))
+
+(expect M (c/matrix (into-array [(double-array [1 2 3]) (double-array [4 5 6])])))
+(expect V (c/matrix (double-array [1 2 3])))
 
 ;; clojure reverse methods
 (expect (c/vector [3 2 1]) (rseq V))
@@ -210,6 +228,8 @@
                                         (c/dense (c/* 5 (c/eye n))))))
 (expect (double (* n 5)) (reduce + (map (partial reduce +)
                                         (c/dense (c/map (partial * 5) (c/eye n))))))
+;; reshaping
+(expect F (c/reshape (c/reshape F m n) n m))
 
 ;; norm and normalize
 (expect (double m)
