@@ -201,15 +201,17 @@
 (promote-mfun* defn ncols .columns)
 (promote-mfun* defn nrows .rows)
 
-(defn size [m]
-  (cond
-    (matrix? m) [(nrows m) (ncols m)]
-    (vec? m) [(nrows m)]
-    (m/array? m) (m/shape m)
-    :else (throw (IllegalArgumentException. "Not a Vector or Matrix"))))
+(defn size 
+  "Returns the size of a Clatrix matri, as a vector of dimension sizes [rows, cols]."
+  ([m]
+    (cond
+      (matrix? m) [(nrows m) (ncols m)]
+      (vec? m) [(nrows m)]
+      (m/array? m) (m/shape m)
+      :else (throw (IllegalArgumentException. "Not a valid Vector or Matrix")))))
 
 (defn vector-matrix?
-  "Is m nx1 or 1xn"
+  "Returns true if m is nx1 or 1xn"
   [^Matrix m]
   (or (.isRowVector ^DoubleMatrix (.me m)) (.isColumnVector ^DoubleMatrix (.me m))))
 
