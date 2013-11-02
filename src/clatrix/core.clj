@@ -260,9 +260,14 @@
          (matrix out)))))
 
 (defmacro mget
-  "Faster implementation of `get`, a single value by indices only."
+  "Fast macro implementation of `get`, a single value by indices only."
   ([m r] `(dotom .get ~m (int ~r)))
   ([m r c] `(dotom .get ~m (int ~r) (int ~c))))
+
+(defmacro mset!
+  "Fast macro implementation of `set`, a single value by indices only."
+  ([m r v] `(dotom .put ~m (int ~r) (double ~v)))
+  ([m r c v] `(dotom .put ~m (int ~r) (int ~c) (double ~v))))
 
 (defn set
   "Sets a value in a matrix or vector. WARNING: Mutates the matrix or vector."
@@ -919,24 +924,26 @@ Uses the same algorithm as java's default Random constructor."
   "Inplace version of map."
   ([fun a]
     (if (matrix? a)
-      (let [[n m] (size a)]
+      (let [n (nrows a)
+            m (ncols a)]
         (dotimes [i n]
           (dotimes [j m]
-            (set a i j (fun (get a i j))))))
-      (let [[n] (size a)]
+            (mset! a i j (fun (mget a i j))))))
+      (let [n (nrows a)]
         (dotimes [i n]
-          (set a i (fun (get a i))))))
+          (mset! a i (fun (mget a i))))))
     a)
   
   ([fun a b]
     (if (matrix? a)
-      (let [[n m] (size a)]
+      (let [n (nrows a)
+            m (ncols a)]
         (dotimes [i n]
           (dotimes [j m]
-            (set a i j (fun (get a i j) (get b i j))))))
-      (let [[n] (size a)]
+            (mset! a i j (fun (mget a i j) (mget b i j))))))
+      (let [n (nrows a)]
         (dotimes [i n]
-          (set a i (fun (get a i) (get b i))))))
+          (mset! a i (fun (mget a i) (mget b i))))))
     a))
 
 (defn ereduce
@@ -1494,7 +1501,17 @@ Uses the same algorithm as java's default Random constructor."
     (if (== (count indexes) 2)
         (mp/set-2d m (first indexes) (second indexes) x)
         (throw (UnsupportedOperationException. "Only 2-d set on matrices is supported."))))
-  (is-mutable? [m] false)
+  (is-mutable? [m] true)
+  
+  mp/PIndexedSettingMutable
+    (set-1d! [m x v]
+      (throw (UnsupportedOperationException. "Only 2-d set on matrices is supported.")))
+    (set-2d! [m x y v]
+      (mset! m x y v))
+    (set-nd! [m indexes v]
+      (if (== 2 (count indexes))
+        (mset! m (first indexes) (second indexes) v)
+        (throw (UnsupportedOperationException. (str "Can't set Matrix with index: " (vec indexes))))))
 
   mp/PMatrixCloning
   (clone [m] (matrix m))
@@ -1579,8 +1596,9 @@ Uses the same algorithm as java's default Random constructor."
     (i m))
   (negate [m]
     (* -1 m))
-  (transpose [m]
-    (t m))
+  
+  mp/PTranspose
+    (transpose [m] (t m))
 
   mp/PSummable
     (element-sum [m]
@@ -1594,7 +1612,7 @@ Uses the same algorithm as java's default Random constructor."
   (get-major-slice [m i]
     (slice-row m i))
   (get-slice [m dimension i]
-    (condp = dimension
+    (case (long dimension)
       0 (slice-row m i)
       1 (slice-column m i)
       (throw (UnsupportedOperationException. "Matrix only has 2 dimensions"))))
@@ -1602,7 +1620,11 @@ Uses the same algorithm as java's default Random constructor."
   mp/PSliceSeq
   ;; API wants a seq of Vectors
   (get-major-slice-seq [m]
-    (clojure.core/map #(slice-row m %) (range (nrows m))))
+    (clojure.core/map #(mp/get-major-slice-view m %) (range (nrows m))))
+  
+  mp/PSliceView
+    (get-major-slice-view [m i] 
+      (clojure.core.matrix.impl.wrappers/wrap-slice m i))
 
   mp/PFunctionalOperations
   (element-seq [m]
@@ -1676,7 +1698,17 @@ Uses the same algorithm as java's default Random constructor."
     (if (== (count indexes) 1)
         (mp/set-1d m (first indexes) x)
         (throw (UnsupportedOperationException. "Only 1-d set on vectors is supported."))))
-  (is-mutable? [m] false)
+  (is-mutable? [m] true)
+  
+   mp/PIndexedSettingMutable
+    (set-1d! [m x v]
+      (mset! m x v))
+    (set-2d! [m x y v]
+      (throw (UnsupportedOperationException. "Only 1-d set on Vector is supported.")))
+    (set-nd! [m indexes v]
+      (if (== 1 (count indexes))
+        (mset! m (first indexes) v)
+        (throw (UnsupportedOperationException. (str "Can't set Vector with index: " (vec indexes))))))
 
   mp/PMatrixCloning
   (clone [m] (vector m))
