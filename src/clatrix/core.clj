@@ -1824,9 +1824,6 @@ Uses the same algorithm as java's default Random constructor."
     ([m f] (ereduce f m))
     ([m f init] (ereduce f init m))))
 
-;;; Register the implementation with core.matrix
-(imp/register-implementation (zeros 2 2))
-
 (comment "Remove until stable"
          mp/PDoubleArrayOutput
          (to-double-array [m]
@@ -1879,3 +1876,6 @@ Uses the same algorithm as java's default Random constructor."
   PMatrixSubComponents
   (main-diagonal [m]
                  (diag m)))
+
+;;; Register the implementation with core.matrix
+(imp/register-implementation (zeros 2 2))
