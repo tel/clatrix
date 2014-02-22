@@ -1513,6 +1513,13 @@ Uses the same algorithm as java's default Random constructor."
           a (m/coerce m a)]
       (mult (matrix m) a)))
 
+  mp/PMatrixDivide
+  (element-divide
+    ([m] (div 1 m))
+    ([m a] (let [[m a] (mp/broadcast-compatible m a)
+                 a (m/coerce m a)]
+             (div m a))))
+
   mp/PVectorTransform
   (vector-transform [m v]
     (* m v))
