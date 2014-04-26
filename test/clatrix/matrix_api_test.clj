@@ -34,7 +34,9 @@
     (is (m/numerical? m))
     (is (m/equals m (m/add m 0)))
     (is (m/equals m (m/mul m 1)))
-    (is (m/equals [50 110] (m/mmul m v)))))
+    (is (m/equals [50 110] (m/mmul m v)))
+    (is (m/equals [[1.0 (/ 2.0)] [(/ 3.0) (/ 4.0)]] (m/div m)))
+    (is (m/equals [[1 1] [1 1]] (m/div m m)))))
 
 (deftest matrix-tests
   (let [m (m/matrix :clatrix [[1 2 3] [3 4 5]])]
