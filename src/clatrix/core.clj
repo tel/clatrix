@@ -1583,12 +1583,8 @@ Uses the same algorithm as java's default Random constructor."
     ([m f]
        (matrix (map f m)))
     ([m f a]
-       (let [a (mp/broadcast-like m a)
-             rc (nrows m)
-             cc (ncols m)] 
-         (reshape!
-           (matrix [(clojure.core/vec (clojure.core/map f (mp/element-seq m) (mp/element-seq a)))])
-           rc cc))))
+      ;; TODO: should have a fats Clatrix implementation
+      (matrix (mp/element-map (mp/convert-to-nested-vectors m) f a))))
 
   (element-map!
     ([m f] (map! f m)))
@@ -1732,10 +1728,10 @@ Uses the same algorithm as java's default Random constructor."
        (vector (clojure.core/mapv f m)))
     ([m f a]
        ;; TODO: make faster version, note clatrix overrides cljure.core/map
-       (matrix (mp/element-map (mp/convert-to-nested-vectors m) f a)))
+       (vector (mp/element-map (mp/convert-to-nested-vectors m) f a)))
     ([m f a more]
        ;; TODO: make faster version, note clatrix overrides cljure.core/map
-       (matrix (apply mp/element-map (mp/convert-to-nested-vectors m) f a more))))
+       (vector (apply mp/element-map (mp/convert-to-nested-vectors m) f a more))))
 
   (element-map! [m f]
     (map! f m))
