@@ -35,6 +35,8 @@
     (is (m/equals m (m/add m 0)))
     (is (m/equals m (m/mul m 1)))
     (is (m/equals [50 110] (m/mmul m v)))
+    (is (m/equals [[7.0 10.0] [15.0 22.0]] (m/mmul m m)))
+    (is (m/equals 500 (m/mmul v v)))
     (is (m/equals [[1.0 (/ 2.0)] [(/ 3.0) (/ 4.0)]] (m/div m)))
     (is (m/equals [[1 1] [1 1]] (m/div m m)))))
 
