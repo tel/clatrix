@@ -987,6 +987,7 @@ Uses the same algorithm as java's default Random constructor."
                    (Vector. (.transpose
                               (.mmul (.transpose ^DoubleMatrix (me a)) ^DoubleMatrix (me b))) nil)
                    (matrix (dotom .mmul b (double a))))
+               (and (vec? a) (vec? b)) (mp/vector-dot a b)
                :else       (clojure.core/* a b)))
   ([a b & as] (reduce * a (cons b as))))
 
