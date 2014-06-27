@@ -29,6 +29,15 @@
 (def ridx (range n))
 (def cidx (range m))
 
+; neither symmetric nor positive
+(def notsym (c/matrix [[1 2] [3 4]]))
+; symmetric but not positive
+(def symmat
+  (let [m (c/matrix [[2 1] [1 -2]])]
+    (c/+ m (c/t m))))
+; symmetric and positive
+(def posmat (c/* symmat (c/t symmat)))
+
 ;; properties of A/S
 (expect Matrix A)
 (expect Matrix B)
@@ -146,6 +155,16 @@
 
 ;; equality
 (expect R (range m))
+
+;; symmetry and positivity
+(expect false (c/symmetric? (c/maybe-symmetric M)))
+(expect false (c/symmetric? (c/maybe-symmetric p)))
+(expect false (c/symmetric? (c/maybe-symmetric notsym)))
+
+(expect false (c/positive? (c/maybe-positive symmat)))
+
+(expect true (c/symmetric? (c/maybe-symmetric symmat)))
+(expect true (c/positive? (c/maybe-positive posmat)))
 
 ;; clojure sequence methods
 (expect (c/matrix [(range 1 m)]) (rest R))

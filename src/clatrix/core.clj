@@ -857,14 +857,10 @@ Uses the same algorithm as java's default Random constructor."
     (if (symmetric? m)
       ;; We'll have faster access to the eigenvalues later...
       (let [vals (dotom Eigen/eigenvalues m)
-            rvals (seq (.toArray (.real vals)))
-            ivals (seq (.toArray (.real vals)))
-            mags (clojure.core/map #(Math/sqrt
-                                      (clojure.core/+ (Math/pow %1 2)
-                                                      (Math/pow %2 2))) rvals ivals)]
-        (if (every? #(> % 0) mags)
+            rvals (seq (.toArray (.real vals)))]
+        (if (every? #(> % 0) rvals)
           (positive m)
-          m))
+          (with-meta m {:positive false})))
       m)))
 
 ;;; # Functor operations
