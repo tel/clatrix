@@ -29,6 +29,16 @@
 (def ridx (range n))
 (def cidx (range m))
 
+(def mat (c/rnorm 3 3))
+(def v (c/rnorm 3 3))
+
+(defn normerr [x y]
+  (let [num (c/norm (c/- x y))
+        den (c/norm x)
+        eps (Math/ulp 1.0)]
+    (/ num (if (> den 0) den eps))))
+(defn float0? [x & {:keys [base] :or {base 1.0}}] (< x (Math/ulp base)))
+
 ;; properties of A/S
 (expect Matrix A)
 (expect Matrix B)
@@ -272,6 +282,10 @@
 (expect (c/matrix [[1 4 9] [16 25 36]]) (c/mult M M))
 (expect (c/matrix [[0.5 1.0 1.5] [2.0 2.5 3.0]]) (c/div M 2))
 (expect (c/constant 2 3 1.0) (c/div M M))
+
+;; linear systems
+(expect true (float0? (normerr (c/* mat (c/solve mat v)) v) :base 1e2))
+(expect true (float0? (normerr (c/* mat (c/lm mat v)) v) :base 1e2))
 
 ;; LU decomposition
 (let [lu (c/lu B)]
