@@ -1632,8 +1632,14 @@ Uses the same algorithm as java's default Random constructor."
                      (into #{} (:return options))))
       (let [qr (dotom Decompose/qr m)]
         (->> (select-keys
-              {:Q #(matrix (.q qr))
-               :R #(matrix (.r qr))}
+              {:Q #(let [m (matrix (.q qr))]
+                     (if (:compact options)
+                       (matrix (filter (fn [x] (not (every? zero? x))) m))
+                       m))
+               :R #(let [m (matrix (.r qr))]
+                     (if (:compact options)
+                       (matrix (filter (fn [x] (not (every? zero? x))) m))
+                       m))}
               (:return options))
              (clojure.core/map (fn [[k v]] [k (v)]))
              (into {})))
