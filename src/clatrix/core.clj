@@ -1602,28 +1602,23 @@ Uses the same algorithm as java's default Random constructor."
       (ereduce f init m)))
 
   mp/PNorm
-  (vector-norm [m p]
-    (throw (UnsupportedOperationException. "vector-norm is not support on matrices")))
-  (matrix-norm [m p]
-    (if (matrix? m)
-      (cond
-       (= p Double/POSITIVE_INFINITY)
-       (reduce #(-> (abs %2) (sum) (max %1)) 0 m)
-       (= p :frobenius) (.norm2 ^DoubleMatrix (me m))
-       (= p 1) (->> (cols m)
-                    (clojure.core/map
-                     #(-> (abs %) (sum)))
-                    (apply max))
-       (= p 2) (->> (* (t m) m)
-                    (dotom Eigen/eigenvalues)
-                    (.real)
-                    (.toArray)
-                    (clojure.core/map #(Math/sqrt %))
-                    (apply max))
-       :else (throw
-              (IllegalArgumentException.
-               "matrix-norm works with Double/POSITIVE_INFINITY, :frobenius, 1 and 2 p values")))
-      (throw (UnsupportedOperationException. "only matrices are supported"))))
+  (norm [m p]
+    (cond
+     (= p Double/POSITIVE_INFINITY)
+     (reduce #(-> (abs %2) (sum) (max %1)) 0 m)
+     (= p 1) (->> (cols m)
+                  (clojure.core/map
+                   #(-> (abs %) (sum)))
+                  (apply max))
+     (= p 2) (->> (* (t m) m)
+                  (dotom Eigen/eigenvalues)
+                  (.real)
+                  (.toArray)
+                  (clojure.core/map #(Math/sqrt %))
+                  (apply max))
+     :else (throw
+            (IllegalArgumentException.
+             "norm works with Double/POSITIVE_INFINITY, 1 and 2 p values"))))
 
   mp/PQRDecomposition
   (qr [m options]
@@ -1872,20 +1867,17 @@ Uses the same algorithm as java's default Random constructor."
     ([m f init] (ereduce f init m)))
 
   mp/PNorm
-  (vector-norm [m p]
-    (if (vec? m)
-      (cond
-       (= p Double/POSITIVE_INFINITY) (.normmax ^DoubleMatrix (me m))
-       (= p 1) (.norm1 ^DoubleMatrix (me m))
-       (= p 2) (.norm2 ^DoubleMatrix (me m))
-       (pos? p) (-> (reduce
-                     #(-> (Math/abs (.doubleValue ^Number %2))
-                          (Math/pow (.doubleValue ^Number p))
-                          (+ %1))
-                     m)
-                    (Math/pow (.doubleValue (/ 1 p)))))))
-  (matrix-norm [m p]
-    (throw (UnsupportedOperationException. "matrix-norm is not supported on vectors"))))
+  (norm [m p]
+    (cond
+     (= p Double/POSITIVE_INFINITY) (.normmax ^DoubleMatrix (me m))
+     (= p 1) (.norm1 ^DoubleMatrix (me m))
+     (= p 2) (.norm2 ^DoubleMatrix (me m))
+     (pos? p) (-> (reduce
+                   #(-> (Math/abs (.doubleValue ^Number %2))
+                        (Math/pow (.doubleValue ^Number p))
+                        (+ %1))
+                   m)
+                  (Math/pow (.doubleValue (/ 1 p)))))))
 
 ;;; Register the implementation with core.matrix
 (imp/register-implementation (zeros 2 2))

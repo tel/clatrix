@@ -68,14 +68,13 @@
 (deftest norm-tests
   (let [m (m/matrix :clatrix [[1 2] [3 4]])
         v (m/matrix :clatrix [1 2])]
-    (is (m/equals (p/vector-norm v 1) 3.0))
-    (is (m/equals (p/vector-norm v 2) 2.23606797749979))
-    (is (m/equals (p/vector-norm v 3) 2.080083823051904))
-    (is (m/equals (p/vector-norm v Double/POSITIVE_INFINITY) 2.0))
-    (is (m/equals (p/matrix-norm m 1) 6.0))
-    (is (m/equals (p/matrix-norm m 2) 5.464985704219043))
-    (is (m/equals (p/matrix-norm m :frobenius) 5.477225575051661))
-    (is (m/equals (p/matrix-norm m Double/POSITIVE_INFINITY) 7.0))))
+    (is (m/equals (p/norm v 1) 3.0))
+    (is (m/equals (p/norm v 2) 2.23606797749979))
+    (is (m/equals (p/norm v 3) 2.080083823051904))
+    (is (m/equals (p/norm v Double/POSITIVE_INFINITY) 2.0))
+    (is (m/equals (p/norm m 1) 6.0))
+    (is (m/equals (p/norm m 2) 5.464985704219043))
+    (is (m/equals (p/norm m Double/POSITIVE_INFINITY) 7.0))))
 
 (deftest decompositions-tests
   (let [m (m/matrix :clatrix [[2 -1 0] [-1 2 -1] [0 -1 2]])]
