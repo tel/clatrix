@@ -1652,8 +1652,8 @@ Uses the same algorithm as java's default Random constructor."
                      (into #{} (:return options))))
       (let [res (cholesky m)]
         (->> (select-keys
-              {:L #(identity res)
-               :L* #(t res)}
+              {:L #(t res)
+               :L* #(identity res)}
               (:return options))
              (clojure.core/map (fn [[k v]] [k (v)]))
              (into {})))

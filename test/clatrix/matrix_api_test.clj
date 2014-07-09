@@ -93,13 +93,15 @@
     (testing "Cholesky decomposition"
       (let [{:keys [L L*]} (p/cholesky m {:return [:L :L*]})]
         (is (m/equals L (m/matrix :clatrix
+                                  [[1.41421356 0 0]
+                                    [-0.70710678 1.22474487 0]
+                                    [0 -0.81649658 1.15470054]])
+                      1e-5))
+        (is (m/equals L* (m/matrix :clatrix
                                   [[1.41421356 -0.70710678 0]
                                    [0 1.22474487 -0.81649658]
-                                   [0 0 1.15470054]])))
-        (is (m/equals L* (m/matrix :clatrix
-                                   [[1.41421356 0 0]
-                                    [-0.70710678 1.22474487 0]
-                                    [0 -0.81649658 1.15470054]])))))
+                                   [0 0 1.15470054]])
+                      1e-5))))
 
     (testing "LU decomposition"
       (let [{:keys [P L U]} (p/lu m {:return [:P :L :U]})]
