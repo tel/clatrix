@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [get set map-indexed map rand vector? + - * pp vector])
   (:use [slingshot.slingshot :only [throw+]])
   (:require [clojure.core.matrix :as m]
+            [clojure.core.matrix.linear :as li]
             [clojure.core.matrix.protocols :as mp]
             [clojure.core.matrix.implementations :as imp])
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
@@ -1432,6 +1433,19 @@ Uses the same algorithm as java's default Random constructor."
       m
       (construct-clatrix m))))
 
+(defmacro with-keys
+  [available required]
+  (let [result-sym (gensym)]
+           `(if ~required
+              (let
+                      [~result-sym {}
+                       ~@(mapcat (fn [[k v]] `(~result-sym (if (some #{~k} ~required) 
+                                                             (assoc ~result-sym ~k ~v)
+                                                             ~result-sym)))
+                                 available)]
+                      ~result-sym)
+              ~available)))
+
 ;; ---------------------------------------------------------------------------;;;
 ;;; # matrix-api
 ;;;
@@ -1592,6 +1606,35 @@ Uses the same algorithm as java's default Random constructor."
        (matrix (map f m)))
     ([m f a]
        (clojure.core/map f (flatten m) a)))
+  
+  mp/PQRDecomposition
+  (qr [m options]
+    (let
+      [result (dotom Decompose/qr m)]
+      (with-keys 
+        {:Q (matrix ^DoubleMatrix (.q result)) 
+         :R (matrix ^DoubleMatrix (.r result))} 
+        (:return options))))
+  
+  mp/PLUDecomposition
+  (lu [m options]
+    (let
+      [result (dotom Decompose/qr m)]
+      (with-keys 
+        {:L (matrix ^DoubleMatrix (.l result)) 
+         :U (matrix ^DoubleMatrix (.u result)) 
+         :P (matrix ^DoubleMatrix (.p result))} 
+        (:return options))))
+  
+  mp/PCholeskyDecomposition
+  (cholesky [m options] 
+      (let
+        [u (dotom Decompose/cholesky m)]
+        (if u
+          (with-keys {:L (m/transpose (matrix ^DoubleMatrix u)) 
+                      :L* (matrix ^DoubleMatrix u)} 
+            (:return options))
+          nil)))
 
   (element-map!
     ([m f] (map! f m)))
@@ -1794,7 +1837,7 @@ Uses the same algorithm as java's default Random constructor."
   (tan!    [m] (tan! m))
   (tanh    [m] (tanh m))
   (tanh!   [m] (tanh! m))
-
+  
   PMatrixSubComponents
   (main-diagonal [m]
                  (diag m)))
