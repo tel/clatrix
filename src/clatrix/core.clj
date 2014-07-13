@@ -859,7 +859,7 @@ Uses the same algorithm as java's default Random constructor."
       ;; We'll have faster access to the eigenvalues later...
       (let [vals (dotom Eigen/eigenvalues m)
             rvals (seq (.toArray (.real vals)))
-            ivals (seq (.toArray (.real vals)))
+            ivals (seq (.toArray (.imag vals)))
             mags (clojure.core/map #(Math/sqrt
                                       (clojure.core/+ (Math/pow %1 2)
                                                       (Math/pow %2 2))) rvals ivals)]
