@@ -1641,7 +1641,7 @@ Uses the same algorithm as java's default Random constructor."
         [result (dotom Singular/fullSVD m)]
         (with-keys 
           {:U (matrix ^DoubleMatrix (aget result 0)) 
-           :s (vector ^DoubleMatrix (aget result 1)) 
+           :S (vector ^DoubleMatrix (aget result 1)) 
            :V* (m/transpose (matrix ^DoubleMatrix (aget result 2)))} 
         (:return options))))
   
