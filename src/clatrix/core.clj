@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [get set map-indexed map rand vector? + - * pp vector])
   (:use [slingshot.slingshot :only [throw+]])
   (:require [clojure.core.matrix :as m]
-            [clojure.core.matrix.linear :as li]
             [clojure.core.matrix.protocols :as mp]
             [clojure.core.matrix.implementations :as imp])
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
