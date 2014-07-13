@@ -1619,7 +1619,7 @@ Uses the same algorithm as java's default Random constructor."
   mp/PLUDecomposition
   (lu [m options]
     (let
-      [result (dotom Decompose/qr m)]
+      [result (dotom Decompose/lu m)]
       (with-keys 
         {:L (matrix ^DoubleMatrix (.l result)) 
          :U (matrix ^DoubleMatrix (.u result)) 
@@ -1635,7 +1635,17 @@ Uses the same algorithm as java's default Random constructor."
                       :L* (matrix ^DoubleMatrix u)} 
             (:return options))
           nil)))
-
+  
+  mp/PSVDDecomposition
+  (svd [m options] 
+      (let
+        [result (dotom Singular/fullSVD m)]
+        (with-keys 
+          {:U (matrix ^DoubleMatrix (aget result 0)) 
+           :s (vector ^DoubleMatrix (aget result 1)) 
+           :V* (m/transpose (matrix ^DoubleMatrix (aget result 2)))} 
+        (:return options))))
+  
   (element-map!
     ([m f] (map! f m)))
   (element-reduce
