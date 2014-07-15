@@ -1,6 +1,8 @@
 (ns clatrix.core-test
   (:use expectations)
   (:require [clatrix.core :as c]
+            [clojure.core.matrix]
+            [clojure.core.matrix.linear]
             [criterium.core :as crit])
   (:import [clatrix.core Matrix Vector]
            [java.io StringReader PushbackReader]))
@@ -428,5 +430,63 @@
         [0 0 1 2 3]
         [0 0 2 4 6]
         [0 0 0 0 0]] 3)
+
+
+;; Tests for core.matrix protocols
+
+;; Testing qr decomposition
+(let [epsilon 0.00001]
+  (let [M (c/matrix [[1 2 3][4 5 6][7 8 9]])
+            {:keys [Q R]} (clojure.core.matrix.linear/qr M {:return [:Q]})]
+    (expect true (clojure.core.matrix/orthogonal? Q))
+    (expect true (and Q (not R))))
+  (let [M (c/matrix [[12 2 -4][231 -2 0][-1 -45 -9]])
+        {:keys [Q R]} (clojure.core.matrix.linear/qr M {:return [:Q :R]})]
+    (expect true (clojure.core.matrix/orthogonal? Q))
+    (expect true (clojure.core.matrix/upper-triangular? R))
+    (expect true (clojure.core.matrix/equals M (clojure.core.matrix/mmul Q R) epsilon)))
+  (let [M (c/matrix [[111 222 333][444 555 666][777 888 999]])
+        {:keys [Q R]} (clojure.core.matrix.linear/qr M {:return nil})]
+    (expect true (clojure.core.matrix/orthogonal? Q))
+    (expect true (clojure.core.matrix/upper-triangular? R))
+    (expect true (clojure.core.matrix/equals M (clojure.core.matrix/mmul Q R) epsilon)))
+  (let [M (c/matrix [[-1 2 0][14 51 6.23][7.1242 -8.4 119]])
+        {:keys [Q R]} (clojure.core.matrix.linear/qr M)]
+    (expect true (clojure.core.matrix/orthogonal? Q))
+    (expect true (clojure.core.matrix/upper-triangular? R))
+    (expect true (clojure.core.matrix/equals M (clojure.core.matrix/mmul Q R) epsilon)))
+  (let [M (c/matrix [[1 2 3 4 5][6 7 8 9 10][11 12 13 14 15]])
+        {:keys [Q R]} (clojure.core.matrix.linear/qr M)]
+    (expect true (clojure.core.matrix/orthogonal? Q))
+    (expect [3 3] (clojure.core.matrix/shape Q))
+    (expect [3 5] (clojure.core.matrix/shape R))
+    (expect true (clojure.core.matrix/equals M (clojure.core.matrix/mmul Q R) epsilon)))
+  (let [M (c/matrix [[1 2 3][4 5 6][7 8 9][10 11 12][13 14 15]])
+        {:keys [Q R]} (clojure.core.matrix.linear/qr M)]
+    (expect true (clojure.core.matrix/orthogonal? Q))
+    (expect [5 5] (clojure.core.matrix/shape Q))
+    (expect [5 3] (clojure.core.matrix/shape R))
+    (expect true (clojure.core.matrix/equals M (clojure.core.matrix/mmul Q R) epsilon))))
+
+;; Testing lu decomposition
+(let [epsilon 0.00001]
+  (let [M (c/matrix [[1 2 3][4 5 6][7 8 9]])
+        {:keys [L U P]} (clojure.core.matrix.linear/lu M {:return [:U]})]
+    (expect true (clojure.core.matrix/upper-triangular? U))
+    (expect true (and U (not L) (not P))))
+  (let [M (c/matrix [[1 2 3][4 5 6][7 8 9]])
+        {:keys [L U P]} (clojure.core.matrix.linear/lu M {:return [:L :U :P]})
+        p (c/matrix [[0.0 1.0 0.0][0.0 0.0 1.0][1.0 0.0 0.0]])]
+    (expect true (clojure.core.matrix/lower-triangular? L))
+    (expect true (clojure.core.matrix/upper-triangular? U))
+    (expect p P)
+    (expect true (clojure.core.matrix/equals M (clojure.core.matrix/mmul P L U) epsilon)))
+  (let [M (c/matrix [[76 87 98][11 21 32][43 54 65]])
+        {:keys [L U P]} (clojure.core.matrix.linear/lu M)
+        p (c/matrix [[1.0 0.0 0.0][0.0 1.0 0.0][0.0 0.0 1.0]])]
+    (expect true (clojure.core.matrix/lower-triangular? L))
+    (expect true (clojure.core.matrix/upper-triangular? U))
+    (expect p P)
+    (expect true (clojure.core.matrix/equals M (clojure.core.matrix/mmul P L U) epsilon))))
 
 
