@@ -1627,13 +1627,15 @@ Uses the same algorithm as java's default Random constructor."
   
   mp/PCholeskyDecomposition
   (cholesky [m options] 
-      (let
-        [u (dotom Decompose/cholesky m)]
-        (if u
-          (with-keys {:L (m/transpose (matrix ^DoubleMatrix u)) 
-                      :L* (matrix ^DoubleMatrix u)} 
-            (:return options))
-          nil)))
+      (try 
+        (let
+          [u (dotom Decompose/cholesky m)]
+          (if u
+            (with-keys {:L (m/transpose (matrix ^DoubleMatrix u)) 
+                        :L* (matrix ^DoubleMatrix u)} 
+              (:return options))
+            nil))
+        (catch org.jblas.exceptions.LapackPositivityException e nil)))
   
   mp/PSVDDecomposition
   (svd [m options] 

@@ -489,4 +489,48 @@
     (expect p P)
     (expect true (clojure.core.matrix/equals M (clojure.core.matrix/mmul P L U) epsilon))))
 
+;; Testing svd decomposition
+(let [epsilon 0.00001]
+  (let [M (c/matrix [[1 2 3][4 5 6][7 8 9]])
+        {:keys [U S V*]} (clojure.core.matrix.linear/svd M {:return [:S]})]
+    (expect true (and S (not U) (not V*))))
+  (let [M (c/matrix [[1 2 3][4 5 6][7 8 9]])
+        {:keys [U S V*]} (clojure.core.matrix.linear/svd M {:return [:U :S :V*]})
+        S_matrix (c/diag S)]
+    (expect true (clojure.core.matrix/orthogonal? U))
+    (expect true (clojure.core.matrix/orthogonal? V*))
+    (expect true (clojure.core.matrix/equals M (clojure.core.matrix/mmul U S_matrix V*) epsilon)))
+  (let [M (c/matrix [[12 234 3.23][-2344 -235 61][-7 18.34 9]])
+        {:keys [U S V*]} (clojure.core.matrix.linear/svd M)
+        S_matrix (c/diag S)]
+    (expect true (clojure.core.matrix/orthogonal? U))
+    (expect true (clojure.core.matrix/orthogonal? V*))
+    (expect true (clojure.core.matrix/equals M (clojure.core.matrix/mmul U S_matrix V*) epsilon)))
+  (let [M (c/matrix [[76 87 98][11 21 32][43 54 65]])
+        {:keys [U S V*]} (clojure.core.matrix.linear/svd M nil)
+        S_matrix (c/diag S)]
+    (expect true (clojure.core.matrix/orthogonal? U))
+    (expect true (clojure.core.matrix/orthogonal? V*))
+    (expect true (clojure.core.matrix/equals M (clojure.core.matrix/mmul U S_matrix V*) epsilon))))
+
+;; Testing cholesky decomposition
+(let [epsilon 0.00001]
+  (let [M (c/matrix [[1 2 3][4 5 6][7 8 9]])
+        result (clojure.core.matrix.linear/cholesky M)]
+    (expect nil nil))
+  (let [M (c/matrix [[4 12 -16][12 37 -43][-16 -43 98]])
+        {:keys [L L*]} (clojure.core.matrix.linear/cholesky M {:return [:L]})]
+    (expect true (clojure.core.matrix/lower-triangular? L))
+    (expect true (and L (not L*)))
+    (expect true (reduce (fn [a b] (and a (> b 0))) true (c/diag L)))
+    (expect true (clojure.core.matrix/equals M (clojure.core.matrix/mmul L (clojure.core.matrix/transpose L)) epsilon)))
+  (let [M (c/matrix [[2 -1 0][-1 2 -1][0 -1 2]])
+        {:keys [L L*]} (clojure.core.matrix.linear/cholesky M {:return [:L :L*]})]
+    (expect true (clojure.core.matrix/lower-triangular? L))
+    (expect true (clojure.core.matrix/upper-triangular? L*))
+    (expect L (clojure.core.matrix/transpose L*))
+    (expect true (reduce (fn [a b] (and a (> b 0))) true (c/diag L)))
+    (expect true (reduce (fn [a b] (and a (> b 0))) true (c/diag L*)))
+    (expect true (clojure.core.matrix/equals M (clojure.core.matrix/mmul L L*) epsilon))))    
+
 
