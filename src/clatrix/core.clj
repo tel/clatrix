@@ -1432,6 +1432,19 @@ Uses the same algorithm as java's default Random constructor."
       m
       (construct-clatrix m))))
 
+(defmacro with-keys
+  [available required]
+  (let [result-sym (gensym)]
+           `(if ~required
+              (let
+                      [~result-sym {}
+                       ~@(mapcat (fn [[k v]] `(~result-sym (if (some #{~k} ~required) 
+                                                             (assoc ~result-sym ~k ~v)
+                                                             ~result-sym)))
+                                 available)]
+                      ~result-sym)
+              ~available)))
+
 ;; ---------------------------------------------------------------------------;;;
 ;;; # matrix-api
 ;;;
@@ -1592,7 +1605,48 @@ Uses the same algorithm as java's default Random constructor."
        (matrix (map f m)))
     ([m f a]
        (clojure.core/map f (flatten m) a)))
-
+  
+  mp/PQRDecomposition
+  (qr [m options]
+    (let
+      [result (dotom Decompose/qr m)]
+      (with-keys 
+        {:Q (matrix ^DoubleMatrix (.q result)) 
+         :R (matrix ^DoubleMatrix (.r result))} 
+        (:return options))))
+  
+  mp/PLUDecomposition
+  (lu [m options]
+    (let
+      [result (dotom Decompose/lu m)]
+      (with-keys 
+        {:L (matrix ^DoubleMatrix (.l result)) 
+         :U (matrix ^DoubleMatrix (.u result)) 
+         :P (matrix ^DoubleMatrix (.p result))} 
+        (:return options))))
+  
+  mp/PCholeskyDecomposition
+  (cholesky [m options] 
+      (try 
+        (let
+          [u (dotom Decompose/cholesky m)]
+          (if u
+            (with-keys {:L (m/transpose (matrix ^DoubleMatrix u)) 
+                        :L* (matrix ^DoubleMatrix u)} 
+              (:return options))
+            nil))
+        (catch org.jblas.exceptions.LapackPositivityException e nil)))
+  
+  mp/PSVDDecomposition
+  (svd [m options] 
+      (let
+        [result (dotom Singular/fullSVD m)]
+        (with-keys 
+          {:U (matrix ^DoubleMatrix (aget result 0)) 
+           :S (vector ^DoubleMatrix (aget result 1)) 
+           :V* (m/transpose (matrix ^DoubleMatrix (aget result 2)))} 
+        (:return options))))
+  
   (element-map!
     ([m f] (map! f m)))
   (element-reduce
@@ -1794,7 +1848,7 @@ Uses the same algorithm as java's default Random constructor."
   (tan!    [m] (tan! m))
   (tanh    [m] (tanh m))
   (tanh!   [m] (tanh! m))
-
+  
   PMatrixSubComponents
   (main-diagonal [m]
                  (diag m)))
