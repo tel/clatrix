@@ -65,6 +65,111 @@
   (comp/compliance-test (c/matrix [[1 2] [3 4]]))
 )
 
+(deftest norm-tests
+  (let [m (m/matrix :clatrix [[1 2] [3 4]])
+        v (m/matrix :clatrix [1 2])]
+    (is (m/equals (p/norm v 1) 3.0))
+    (is (m/equals (p/norm v 2) 2.23606797749979))
+    (is (m/equals (p/norm v 3) 2.080083823051904))
+    (is (m/equals (p/norm v Double/POSITIVE_INFINITY) 2.0))
+    (is (m/equals (p/norm m 1) 6.0))
+    (is (m/equals (p/norm m 2) 5.464985704219043))
+    (is (m/equals (p/norm m Double/POSITIVE_INFINITY) 7.0))))
+
+(deftest decompositions-tests
+  (let [m (m/matrix :clatrix [[2 -1 0] [-1 2 -1] [0 -1 2]])]
+    (testing "QR decomposition"
+        (let [{:keys [Q R]} (p/qr m {:return [:Q :R]})]
+          (is (m/equals Q (m/matrix :clatrix
+                                    [[-0.89442719 -0.35856858 0.26726124]
+                                     [0.4472136 -0.71713717 0.53452248]
+                                     [0 0.5976143 0.80178373]])))
+          (is (m/equals R (m/matrix :clatrix
+                                    [[-2.23606798 1.78885438 -0.4472136]
+                                     [ 0 -1.67332005 1.91236577]
+                                     [ 0 0 1.06904497]])))
+          (is (m/equals (m/mmul Q R) m))))
+    (testing "Cholesky decomposition"
+      (let [{:keys [L L*]} (p/cholesky m {:return [:L :L*]})]
+        (is (m/equals L (m/matrix :clatrix
+                                  [[1.41421356 0 0]
+                                    [-0.70710678 1.22474487 0]
+                                    [0 -0.81649658 1.15470054]])
+                      1e-5))
+        (is (m/equals L* (m/matrix :clatrix
+                                  [[1.41421356 -0.70710678 0]
+                                   [0 1.22474487 -0.81649658]
+                                   [0 0 1.15470054]])
+                      1e-5))))
+
+    (testing "LU decomposition"
+      (let [{:keys [P L U]} (p/lu m {:return [:P :L :U]})]
+        (is (m/equals P (m/identity-matrix :clatrix 3)))
+        (is (m/equals L (m/matrix :clatrix
+                                  [[1 0 0]
+                                   [-0.5 1 0]
+                                   [0 -0.66667 1]])))
+        (is (m/equals U (m/matrix :clatrix
+                                  [[2 -1 0]
+                                   [0 1.5 -1]
+                                   [0 0 1.33333]])))))
+
+    (testing "SVD decomposition"
+      (let [{:keys [U S V*]} (p/svd m {:return [:U :S :V*]})]
+        (is (m/equals U (m/matrix :clatrix
+                                  [[-0.5 -0.707106 0.5]
+                                   [0.707106 0 0.707106]
+                                   [-0.5 0.707106 0.5]])
+                      1e-5))
+        (is (m/equals S (m/matrix :clatrix [3.4142135 2 0.5857864])
+                      1e-5))
+        (is (m/equals V* (m/matrix :clatrix
+                                   [[-0.5 -0.707106 0.5]
+                                    [0.707106 0 0.707106]
+                                    [-0.5 0.707106 0.5]])
+                      1e-5))))
+
+    (testing "Eigen decomposition"
+      (let [{:keys [Q rA iA]} (p/eigen m {:return [:Q :rA :iA]})]
+        (is (m/equals Q (m/matrix :clatrix
+                                  [[-0.5 -0.707106 0.5]
+                                   [0.707106 0 0.707106]
+                                   [-0.5 0.707106 0.5]]) 1e-5))
+        (is (m/equals rA (m/matrix :clatrix [3.41421 0 0 0 2 0 0 0 0.58578])
+                      1e-5))
+        (is (m/equals iA (m/new-vector :clatrix 9)))))
+
+    (testing "Symmetric Eigen decomposition"
+      (let [sym (m/matrix :clatrix [[1 3 0]
+                                    [3 2 6]
+                                    [0 6 5]])
+            {:keys [Q rA iA]} (p/eigen sym {:return [:Q :rA :iA]
+                                            :symmetric true})]
+        (is (m/equals Q (m/matrix :clatrix
+                                  [[-0.45327 0.86657 0.20878]
+                                   [0.73883 0.23422 0.63186]
+                                   [-0.49865 -0.44066 0.74642]])
+                      1e-5))
+        (is (m/equals rA (m/matrix :clatrix [-3.88999 0 0 0 1.81086 0 0 0 10.07912])
+                      1e-5))
+        (is (= iA nil))))))
+
+(deftest solve-tests
+  (let [x (m/matrix :clatrix [[3 2 -1]
+                              [2 -2 4]
+                              [-1 0.5 -1]])
+        y (m/matrix :clatrix [1 -2 0])]
+    (is (m/equals (m/matrix :clatrix [[1] [-2] [-2]])
+                  (p/solve x y)))))
+
+(deftest least-squares-tests
+  (let [x (m/matrix :clatrix [[3 2 -1]
+                              [2 -2 4]
+                              [-1 0.5 -1]])
+        y (m/matrix :clatrix [1 -2 0])]
+    (is (m/equals (m/matrix :clatrix [[1] [-2] [-2]])
+                  (p/least-squares x y)))))
+
 (comment
   (def M (c/matrix [[1 2 3] [4 5 6] [7 8 9]]))  ;; 3x3 Matrix
   (get-shape M) ;; [3 3]
