@@ -5,6 +5,8 @@ smart matrices? Being implemented as a data type around the native
 BLAS hooks of [jblas](http://github.com/mikiobraun/jblas) gives it
 speed. Being implemented as a Clojure sequence makes it clever.
 
+Clatrix works as an implementation of [core.matrix](http://github.com/mikera/core.matrix) so it is fully compatible with other libraries and tools that use the `core.matrix` API.
+
 ## Usage
 
 For now, you can read the
