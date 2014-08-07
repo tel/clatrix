@@ -859,7 +859,7 @@ Uses the same algorithm as java's default Random constructor."
       ;; We'll have faster access to the eigenvalues later...
       (let [vals (dotom Eigen/eigenvalues m)
             rvals (seq (.toArray (.real vals)))
-            ivals (seq (.toArray (.real vals)))
+            ivals (seq (.toArray (.imag vals)))
             mags (clojure.core/map #(Math/sqrt
                                       (clojure.core/+ (Math/pow %1 2)
                                                       (Math/pow %2 2))) rvals ivals)]
@@ -988,6 +988,7 @@ Uses the same algorithm as java's default Random constructor."
                    (Vector. (.transpose
                               (.mmul (.transpose ^DoubleMatrix (me a)) ^DoubleMatrix (me b))) nil)
                    (matrix (dotom .mmul b (double a))))
+               (and (vec? a) (vec? b)) (mp/vector-dot a b)
                :else       (clojure.core/* a b)))
   ([a b & as] (reduce * a (cons b as))))
 
@@ -1521,6 +1522,13 @@ Uses the same algorithm as java's default Random constructor."
           a (m/coerce m a)]
       (mult (matrix m) a)))
 
+  mp/PMatrixDivide
+  (element-divide
+    ([m] (div 1 m))
+    ([m a] (let [[m a] (mp/broadcast-compatible m a)
+                 a (m/coerce m a)]
+             (div m a))))
+
   mp/PVectorTransform
   (vector-transform [m v]
     (* m v))
@@ -1592,7 +1600,130 @@ Uses the same algorithm as java's default Random constructor."
     ([m f]
       (ereduce f m))
     ([m f init ]
-      (ereduce f init m))))
+      (ereduce f init m)))
+
+  mp/PNorm
+  (norm [m p]
+    (cond
+     (= p Double/POSITIVE_INFINITY)
+     (reduce #(-> (abs %2) (sum) (max %1)) 0 m)
+     (= p 1) (->> (cols m)
+                  (clojure.core/map
+                   #(-> (abs %) (sum)))
+                  (apply max))
+     (= p 2) (->> (* (t m) m)
+                  (dotom Eigen/eigenvalues)
+                  (.real)
+                  (.toArray)
+                  (clojure.core/map #(Math/sqrt %))
+                  (apply max))
+     :else (throw
+            (IllegalArgumentException.
+             "norm works with Double/POSITIVE_INFINITY, 1 and 2 p values"))))
+
+  mp/PQRDecomposition
+  (qr [m options]
+    (if-not (empty? (clojure.set/intersection
+                     #{:Q :R}
+                     (into #{} (:return options))))
+      (let [qr (dotom Decompose/qr m)]
+        (->> (select-keys
+              {:Q #(let [m (matrix (.q qr))]
+                     (if (:compact options)
+                       (matrix (filter (fn [x] (not (every? zero? x))) m))
+                       m))
+               :R #(let [m (matrix (.r qr))]
+                     (if (:compact options)
+                       (matrix (filter (fn [x] (not (every? zero? x))) m))
+                       m))}
+              (:return options))
+             (clojure.core/map (fn [[k v]] [k (v)]))
+             (into {})))
+      {}))
+
+  mp/PCholeskyDecomposition
+  (cholesky [m options]
+    (if-not (empty? (clojure.set/intersection
+                     #{:L :L*}
+                     (into #{} (:return options))))
+      (let [res (cholesky m)]
+        (->> (select-keys
+              {:L #(t res)
+               :L* #(identity res)}
+              (:return options))
+             (clojure.core/map (fn [[k v]] [k (v)]))
+             (into {})))
+      {}))
+
+  mp/PLUDecomposition
+  (lu [m options]
+    (if-not (empty? (clojure.set/intersection
+                     #{:P :L :U}
+                     (into #{} (:return options))))
+      (let [res (lu m)]
+        (->> (select-keys
+              {:P #(:p res)
+               :L #(:l res)
+               :U #(:u res)}
+              (:return options))
+             (clojure.core/map (fn [[k v]] [k (v)]))
+             (into {})))
+      {}))
+
+  mp/PSVDDecomposition
+  (svd [m options]
+    (let [return (into #{} (:return options))]
+      (cond
+       (= return #{:S}) {:S (:values (svd m :type :values))}
+       (not (empty? (clojure.set/intersection
+                     #{:U :S :V*} return)))
+       (let [{:keys [left right values]} (svd m)]
+         (select-keys {:U left
+                       :S values
+                       :V* right}
+                      return))
+       :else {})))
+
+  mp/PEigenDecomposition
+  (eigen [m options]
+    (let [return (into #{} (:return options))
+          symmetric? (:symmetric options)
+          res (cond
+               (empty?
+                (clojure.set/intersection
+                 #{:Q :rA :iA} return))
+               {}
+
+               (contains? return :Q)
+               (if symmetric?
+                 (let [[^DoubleMatrix vecs ^DoubleMatrix vals]
+                       (seq (dotom Eigen/symmetricEigenvectors m))]
+                   {:Q (matrix vecs)
+                    :rA (vector (.toArray vals))
+                    :iA nil})
+                 (let [[^ComplexDoubleMatrix vecs ^ComplexDoubleMatrix vals]
+                       (seq (dotom Eigen/eigenvectors m))]
+                   {:Q (matrix (.real vecs))
+                    :rA (vector (.toArray (.real vals)))
+                    :iA (vector (.toArray (.imag vals)))}))
+
+               :else
+               (if symmetric?
+                 {:rA (vector (dotom Eigen/symmetricEigenvalues m))
+                  :iA nil}
+                 (let [^ComplexDoubleMatrix vals (dotom Eigen/eigenvalues m)]
+                   {:rA (vector (.toArray (.real vals)))
+                    :iA (vector (.toArray (.imag vals)))})))]
+      (select-keys res return)))
+
+  mp/PSolveLinear
+  (solve [a b] (matrix (solve a b)))
+
+  mp/PLeastSquares
+  (least-squares [a b]
+    (matrix (Solve/solveLeastSquares ^DoubleMatrix (me a)
+                                     ^DoubleMatrix (me b)))))
+
 
 (extend-type Vector
   mp/PImplementation
@@ -1737,7 +1868,20 @@ Uses the same algorithm as java's default Random constructor."
     (map! f m))
   (element-reduce
     ([m f] (ereduce f m))
-    ([m f init] (ereduce f init m))))
+    ([m f init] (ereduce f init m)))
+
+  mp/PNorm
+  (norm [m p]
+    (cond
+     (= p Double/POSITIVE_INFINITY) (.normmax ^DoubleMatrix (me m))
+     (= p 1) (.norm1 ^DoubleMatrix (me m))
+     (= p 2) (.norm2 ^DoubleMatrix (me m))
+     (pos? p) (-> (reduce
+                   #(-> (Math/abs (.doubleValue ^Number %2))
+                        (Math/pow (.doubleValue ^Number p))
+                        (+ %1))
+                   m)
+                  (Math/pow (.doubleValue (/ 1 p)))))))
 
 ;;; Register the implementation with core.matrix
 (imp/register-implementation (zeros 2 2))
