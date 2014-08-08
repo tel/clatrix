@@ -5,8 +5,7 @@
             :url "http://www.opensource.org/licenses/MIT"}
   :resource-paths ["native"]
   :plugins [[lein-expectations "0.0.8"]]
-  :dev-dependencies [[lein-expectations "0.0.8"]
-                     [expectations "2.0.9"]]
+
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [slingshot "0.10.3"]
                  [org.jblas/jblas "1.2.3"]

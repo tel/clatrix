@@ -150,10 +150,12 @@
 
   clojure.lang.Sequential)
 
-(defn me [mat]
-  (if (vec? mat)
-    (.me ^Vector  mat)
-    (.me ^Matrix  mat)))
+(defn me 
+  "Accesses the underlying JBlas DoubleMatrix of a matrix or vector."
+  (^DoubleMatrix [mat]
+    (if (vec? mat)
+      (.me ^Vector mat)
+      (.me ^Matrix mat))))
 
 (defmacro dotom [name m & args]
   `(~name ~(vary-meta `(me ~m) assoc :tag 'org.jblas.DoubleMatrix) ~@args))
@@ -199,15 +201,18 @@
 (promote-mfun* defn ncols .columns)
 (promote-mfun* defn nrows .rows)
 
-(defn size [m]
-  (cond
-    (matrix? m) [(nrows m) (ncols m)]
-    (vec? m) [(nrows m)]
-    (m/array? m) (m/shape m)
-    :else (throw (IllegalArgumentException. "Not a Vector or Matrix"))))
+(defn size 
+  "Returns the size of a Clatrix matrix or vector, as a vector of dimension sizes 
+   i.e. [rows, cols] for a Matrix and [rows] for a Vector."
+  ([m]
+    (cond
+      (matrix? m) [(nrows m) (ncols m)]
+      (vec? m) [(nrows m)]
+      (m/array? m) (m/shape m) ;; fallback for other core.matrix array types
+      :else (throw (IllegalArgumentException. "Not a valid Vector or Matrix")))))
 
 (defn vector-matrix?
-  "Is m nx1 or 1xn"
+  "Returns true if m is nx1 or 1xn"
   [^Matrix m]
   (or (.isRowVector ^DoubleMatrix (.me m)) (.isColumnVector ^DoubleMatrix (.me m))))
 
@@ -256,9 +261,14 @@
          (matrix out)))))
 
 (defmacro mget
-  "Faster implementation of `get`, a single value by indices only."
+  "Fast macro implementation of `get`, a single value by indices only."
   ([m r] `(dotom .get ~m (int ~r)))
   ([m r c] `(dotom .get ~m (int ~r) (int ~c))))
+
+(defmacro mset!
+  "Fast macro implementation of `set`, a single value by indices only."
+  ([m r v] `(dotom .put ~m (int ~r) (double ~v)))
+  ([m r c v] `(dotom .put ~m (int ~r) (int ~c) (double ~v))))
 
 (defn set
   "Sets a value in a matrix or vector. WARNING: Mutates the matrix or vector."
@@ -284,7 +294,7 @@
 (defn dense
   "`dense` converts a matrix object into a seq-of-seqs of its elements
   in row-major order."  [^Matrix m]
-  (vec (clojure.core/map vec (vec (dotom .toArray2 m)))))
+  (clojure.core/mapv vec (vec (dotom .toArray2 m))))
 
 ;; TODO: different behaviour for vector-matrix seems broken?
 (defn as-vec
@@ -394,7 +404,7 @@
   ([m]
     (cond
       (clatrix? m) m
-      (number? m) m
+      (number? m) (double m)
       (m/array? m)
          (case (long (m/dimensionality m))
            0 (double (mp/get-0d m))
@@ -440,7 +450,7 @@
   (let [n (nrows A)
         m (ncols A)]
     (if (= (clojure.core/* n m) (clojure.core/* p q))
-      (matrix (dotom .reshape A p q))
+      (dotom .reshape A p q)
       (throw+ {:exception "Cannot change the number of elements during a reshape."
                :previous (clojure.core/* n m)
                :new (clojure.core/* p q)}))))
@@ -914,12 +924,29 @@ Uses the same algorithm as java's default Random constructor."
 ;; (last (for ...)) seems like a strange
 (defn map!
   "Inplace version of map."
-  [fun ^Matrix mat]
-  (let [[n m] (size mat)]
-    (last
-     (for [i (range n)
-           j (range m)]
-       (set mat i j (fun (get mat i j)))))))
+  ([fun a]
+    (if (matrix? a)
+      (let [n (nrows a)
+            m (ncols a)]
+        (dotimes [i n]
+          (dotimes [j m]
+            (mset! a i j (fun (mget a i j))))))
+      (let [n (nrows a)]
+        (dotimes [i n]
+          (mset! a i (fun (mget a i))))))
+    a)
+  
+  ([fun a b]
+    (if (matrix? a)
+      (let [n (nrows a)
+            m (ncols a)]
+        (dotimes [i n]
+          (dotimes [j m]
+            (mset! a i j (fun (mget a i j) (mget b i j))))))
+      (let [n (nrows a)]
+        (dotimes [i n]
+          (mset! a i (fun (mget a i) (mget b i))))))
+    a))
 
 (defn ereduce
   "Quick and dirty reduce."
@@ -1433,13 +1460,11 @@ Uses the same algorithm as java's default Random constructor."
       m
       (construct-clatrix m))))
 
-;; ---------------------------------------------------------------------------;;;
-;;; # matrix-api
+;;; ---------------------------------------------------------------------------;;;
+;;; # core.matrix implementation
 ;;;
-;;; Extend Matrix type to implement matrix-api protocols
-;;; Note that the matrix-api notion of a vector conflicts with
-;;; our notion of vector.  Essentially, all our vectors are
-;;; considered matrix-row or matrix-column
+;;; Extend Matrix type to implement core.matrix protocols
+;;;
 (extend-type Matrix
   mp/PImplementation
   (implementation-key [m]
@@ -1460,10 +1485,11 @@ Uses the same algorithm as java's default Random constructor."
   (get-shape  [m] [(nrows m) (ncols m)])
   (is-scalar? [m] false)
   (is-vector? [m] false )
-  (dimension-count [m dimension-number] (condp = (long dimension-number)
-                                            0 (nrows m) 
-                                            1 (ncols m) 
-                                            (throw (IllegalArgumentException. "Matrix only has dimensions 0 and 1"))))
+  (dimension-count [m dimension-number] 
+    (case (long dimension-number)
+      0 (nrows m)
+      1 (ncols m)
+      (throw (IllegalArgumentException. "Matrix only has dimensions 0 and 1"))))
 
   mp/PIndexedAccess
   (get-1d [m i] (mget m i))
@@ -1471,19 +1497,30 @@ Uses the same algorithm as java's default Random constructor."
   (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 2)
-        (mp/get-2d m (first indexes) (second indexes))
+        (mget m (first indexes) (second indexes))
         (throw (UnsupportedOperationException. "Only 2-d get on matrices is supported.")))))
 
   mp/PIndexedSetting
   (set-1d [m i x]
     (throw (UnsupportedOperationException. "Only 2-d set on matrices is supported.")))
 
-  (set-2d [m row column x] (matrix (set (matrix m) row column x)))
+  (set-2d [m row column x] 
+    (let [m (matrix m)] (set m row column x) m))
   (set-nd [m indexes x]
     (if (== (count indexes) 2)
         (mp/set-2d m (first indexes) (second indexes) x)
         (throw (UnsupportedOperationException. "Only 2-d set on matrices is supported."))))
-  (is-mutable? [m] false)
+  (is-mutable? [m] true)
+  
+  mp/PIndexedSettingMutable
+    (set-1d! [m x v]
+      (throw (UnsupportedOperationException. "Only 2-d set on matrices is supported.")))
+    (set-2d! [m x y v]
+      (mset! m x y v))
+    (set-nd! [m indexes v]
+      (if (== 2 (count indexes))
+        (mset! m (first indexes) (second indexes) v)
+        (throw (UnsupportedOperationException. (str "Can't set Matrix with index: " (vec indexes))))))
 
   mp/PMatrixCloning
   (clone [m] (matrix m))
@@ -1503,6 +1540,14 @@ Uses the same algorithm as java's default Random constructor."
   mp/PCoercion
   (coerce-param [m param]
     (clatrix param))
+  
+  mp/PBroadcastLike
+    (broadcast-like [m a]
+      (clatrix (mp/broadcast a (mp/get-shape m))))
+    
+  mp/PBroadcastCoerce
+    (broadcast-coerce [m a]
+      (clatrix (mp/broadcast a (mp/get-shape m))))
 
   mp/PConversion
   (convert-to-nested-vectors [m]
@@ -1549,6 +1594,14 @@ Uses the same algorithm as java's default Random constructor."
     (let [[m a] (mp/broadcast-compatible m a)
           a (m/coerce m a)]
       (- m a)))
+   
+  mp/PMatrixAddMutable
+  (matrix-add! [m a]
+    (let [a (mp/broadcast-like m a)]
+      (.addi (me m) (me a))))
+  (matrix-sub! [m a]
+    (let [a (mp/broadcast-like m a)]
+      (.subi (me m) (me a))))
 
   mp/PMatrixOps
   (trace [m]
@@ -1559,8 +1612,13 @@ Uses the same algorithm as java's default Random constructor."
     (i m))
   (negate [m]
     (* -1 m))
-  (transpose [m]
-    (t m))
+  
+  mp/PTranspose
+  (transpose [m] (t m))
+    
+  mp/PImmutableMatrixConstruction
+  (immutable-matrix [m]
+    (to-vecs m)) 
 
   mp/PSummable
     (element-sum [m]
@@ -1574,28 +1632,43 @@ Uses the same algorithm as java's default Random constructor."
   (get-major-slice [m i]
     (slice-row m i))
   (get-slice [m dimension i]
-    (condp = dimension
+    (case (long dimension)
       0 (slice-row m i)
       1 (slice-column m i)
-      (throw (UnsupportedOperationException. "Clatrix only support 2-d"))))
+      (throw (UnsupportedOperationException. "Matrix only has 2 dimensions"))))
 
   mp/PSliceSeq
-  ;; API wants a seq of Matrices
+  ;; API wants a seq of Vectors
   (get-major-slice-seq [m]
-    (clojure.core/map #(slice-row m %) (range (nrows m))))
+    (clojure.core/map #(mp/get-major-slice-view m %) (range (nrows m))))
+  
+  mp/PSliceView
+    (get-major-slice-view [m i] 
+      (clojure.core.matrix.impl.wrappers/wrap-slice m i))
 
   mp/PFunctionalOperations
   (element-seq [m]
     (flatten m))
   (element-map
     ([m f]
-       (matrix (map f m)))
+       (map f m)) ;; note: using Clatrix map function, not clojure.core
     ([m f a]
-      ;; TODO: should have a fats Clatrix implementation
-      (matrix (mp/element-map (mp/convert-to-nested-vectors m) f a))))
+       (let [rc (long (nrows m))
+             cc (long (ncols m))
+             a (mp/broadcast-coerce m a)
+             result (matrix m)]
+         (dotimes [i rc]
+           (dotimes [j cc]
+             (set result i j (f (get m i j) (get a i j)))))
+         result)))
 
-  (element-map!
-    ([m f] (map! f m)))
+
+  (element-map! 
+    ([m f]
+      (map! f m))
+    ([m f a]
+      (map! f m (mp/broadcast-like m a))))
+  
   (element-reduce
     ([m f]
       (ereduce f m))
@@ -1742,13 +1815,12 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PDimensionInfo
   (dimensionality [m] 1)
-  (get-shape  [m] [(first (size m))])
+  (get-shape  [m] [(nrows m)])
   (is-scalar? [m] false)
   (is-vector? [m] true )
-  (dimension-count [m dimension-number] (let [[r c] (size m)]
-                                          (condp = dimension-number
-                                            0 r
-                                            (throw (IllegalArgumentException. "Vector only has dimension 0")))))
+  (dimension-count [m dimension-number] (case (long dimension-number)
+                                          0 (nrows m)
+                                          (throw (IllegalArgumentException. "Vector only has dimension 0"))))
 
   mp/PIndexedAccess
   (get-1d [m i] (mget m i))
@@ -1757,7 +1829,7 @@ Uses the same algorithm as java's default Random constructor."
   (get-nd [m indexes]
     (let [dims (count indexes)]
       (if (== dims 1)
-        (mp/get-1d m (first indexes))
+        (mget m (first indexes))
         (throw (UnsupportedOperationException. "Only 1-d get on vectors is supported.")))))
 
   mp/PIndexedSetting
@@ -1770,7 +1842,17 @@ Uses the same algorithm as java's default Random constructor."
     (if (== (count indexes) 1)
         (mp/set-1d m (first indexes) x)
         (throw (UnsupportedOperationException. "Only 1-d set on vectors is supported."))))
-  (is-mutable? [m] false)
+  (is-mutable? [m] true)
+  
+   mp/PIndexedSettingMutable
+    (set-1d! [m x v]
+      (mset! m x v))
+    (set-2d! [m x y v]
+      (throw (UnsupportedOperationException. "Only 1-d set on Vector is supported.")))
+    (set-nd! [m indexes v]
+      (if (== 1 (count indexes))
+        (mset! m (first indexes) v)
+        (throw (UnsupportedOperationException. (str "Can't set Vector with index: " (vec indexes))))))
 
   mp/PMatrixCloning
   (clone [m] (vector m))
@@ -1790,7 +1872,15 @@ Uses the same algorithm as java's default Random constructor."
       (cond 
         (and (== 1 (count shape)) (== (first shape) (nrows m))) m
         (and (== 2 (count shape)) (== (second shape) (nrows m))) (matrix (vec (repeat (first shape) m)))))
-  
+
+  mp/PBroadcastLike
+    (broadcast-like [m a]
+      (clatrix (mp/broadcast a (mp/get-shape m))))
+    
+  mp/PBroadcastCoerce
+    (broadcast-coerce [m a]
+      (clatrix (mp/broadcast a (mp/get-shape m))))
+    
   mp/PConversion
   (convert-to-nested-vectors [m]
     (to-vecs m))
@@ -1800,13 +1890,16 @@ Uses the same algorithm as java's default Random constructor."
     (and
       (mp/same-shape? a b)
       (.equiv a (vector b))))
+  
+  mp/PImmutableMatrixConstruction
+  (immutable-matrix [m]
+    (to-vecs m)) 
 
   mp/PMatrixMultiply
   (matrix-multiply [m a]
     (* m (m/coerce m a)))
   (element-multiply [m a]
-    (let [a (m/broadcast-like m a)
-          a (clatrix a)]
+    (let [a (m/broadcast-coerce m a)]
       (mult m a)))
 
   mp/PVectorTransform
@@ -1830,6 +1923,14 @@ Uses the same algorithm as java's default Random constructor."
           a (m/coerce m a)
           ]
       (- m a)))
+  
+  mp/PMatrixAddMutable
+  (matrix-add! [m a]
+    (let [a (mp/broadcast-like m a)]
+      (.addi (me m) (me a))))
+  (matrix-sub! [m a]
+    (let [a (mp/broadcast-like m a)]
+      (.subi (me m) (me a))))
 
   mp/PVectorOps
   (vector-dot [a b]
@@ -1855,7 +1956,7 @@ Uses the same algorithm as java's default Random constructor."
     (seq (.toArray ^DoubleMatrix (me m))))
   (element-map
     ([m f]
-       ;; TODO: make faster version, note clatrix overrides cljure.core/map
+       ;; TODO: make faster version, note clatrix overrides clojure.core/map
        (vector (clojure.core/mapv f m)))
     ([m f a]
        ;; TODO: make faster version, note clatrix overrides cljure.core/map
@@ -1864,8 +1965,12 @@ Uses the same algorithm as java's default Random constructor."
        ;; TODO: make faster version, note clatrix overrides cljure.core/map
        (vector (apply mp/element-map (mp/convert-to-nested-vectors m) f a more))))
 
-  (element-map! [m f]
-    (map! f m))
+
+  (element-map! 
+    ([m f]
+      (map! f m))
+    ([m f a]
+      (map! f m (mp/broadcast-coerce m a))))
   (element-reduce
     ([m f] (ereduce f m))
     ([m f init] (ereduce f init m)))
@@ -1938,3 +2043,6 @@ Uses the same algorithm as java's default Random constructor."
   PMatrixSubComponents
   (main-diagonal [m]
                  (diag m)))
+
+;;; Register the implementation with core.matrix
+(imp/register-implementation (zeros 2 2))

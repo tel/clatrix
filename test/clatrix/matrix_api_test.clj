@@ -40,6 +40,14 @@
     (is (m/equals [[1.0 (/ 2.0)] [(/ 3.0) (/ 4.0)]] (m/div m)))
     (is (m/equals [[1 1] [1 1]] (m/div m m)))))
 
+(deftest map-tests
+  (let [v (c/vector [1 2 3])
+        v2 (c/vector [10 20 30])]
+    (is (= (c/size v) (c/size v2) [3]))
+    (is (m/equals [2 4 6] (m/emap clojure.core/+ v v)))
+    (m/emap! clojure.core/+ v v2)
+    (is (m/equals [11 22 33] v))))
+
 (deftest matrix-tests
   (let [m (m/matrix :clatrix [[1 2 3] [3 4 5]])]
     (is (== 2 (m/dimensionality m)))
@@ -56,8 +64,12 @@
     (is (== 10.0 (m/esum m)))
     (is (== 6.0 (m/esum v)))))
 
+(deftest sequence-tests
+  (is (= [1.0 2.0 3.0 4.0] (m/eseq (c/matrix [[1 2] [3 4]])))))
+
 (deftest instance-tests
   (comp/instance-test (c/matrix [[1 2] [3 4]]))
+  (comp/instance-test (c/matrix [[1 2] [3 4] [5 6]]))
   (comp/instance-test (c/vector [1 2]))
 )
 
