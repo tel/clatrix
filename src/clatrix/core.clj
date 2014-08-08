@@ -367,7 +367,7 @@
        (if (number? (first seq-of-seqs))
          (matrix (DoubleMatrix. (double-array (clojure.core/map double seq-of-seqs)))
                  meta-args)
-         (let [lengths (clojure.core/map count seq-of-seqs)
+         (let [lengths (clojure.core/map m/slice-count seq-of-seqs)
                flen    (first lengths)]
            (cond
             (or (= (count lengths) 0) (some zero? lengths)) (matrix (DoubleMatrix. 0 0) meta-args)
