@@ -97,7 +97,7 @@
 (deftype Vector [^DoubleMatrix me ^clojure.lang.IPersistentMap metadata]
   Object
   (toString [mat]
-    (str (vec (clojure.core/map vec (vec (.toArray2 ^DoubleMatrix (.me mat)))))))
+    (str (vec (mp/element-seq mat))))
 
   clojure.lang.IObj
 
@@ -398,8 +398,8 @@
       (m/array? m)
          (case (long (m/dimensionality m))
            0 (double (mp/get-0d m))
-           1 (vector m)
-           2 (matrix m))
+           1 (clatrix.core/vector m)
+           2 (clatrix.core/matrix m))
       :else (double m))))
 
 (defn diag
@@ -437,7 +437,8 @@
 (defn reshape!
   "reshape! modifies matrix in place."  
   [^Matrix A p q]
-  (let [[n m] (size A)]
+  (let [n (nrows A)
+        m (ncols A)]
     (if (= (clojure.core/* n m) (clojure.core/* p q))
       (matrix (dotom .reshape A p q))
       (throw+ {:exception "Cannot change the number of elements during a reshape."
@@ -1419,7 +1420,7 @@ Uses the same algorithm as java's default Random constructor."
 
 (defn- construct-clatrix [m]
   (case (long (mp/dimensionality m))
-        0 (double m)
+        0 (double (mp/get-0d m))
         1 (vector m)
         2 (matrix m)
         (throw (UnsupportedOperationException. "Only 1-d vectors or 2-d matrices are supported."))))
@@ -1456,14 +1457,13 @@ Uses the same algorithm as java's default Random constructor."
 
   mp/PDimensionInfo
   (dimensionality [m] 2)
-  (get-shape  [m] (size m))
+  (get-shape  [m] [(nrows m) (ncols m)])
   (is-scalar? [m] false)
   (is-vector? [m] false )
-  (dimension-count [m dimension-number] (let [[r c] (size m)]
-                                          (condp = dimension-number
-                                            0 r
-                                            1 c
-                                            (throw (IllegalArgumentException. "Matrix only has dimensions 0 and 1")))))
+  (dimension-count [m dimension-number] (condp = (long dimension-number)
+                                            0 (nrows m) 
+                                            1 (ncols m) 
+                                            (throw (IllegalArgumentException. "Matrix only has dimensions 0 and 1"))))
 
   mp/PIndexedAccess
   (get-1d [m i] (mget m i))
@@ -1591,7 +1591,8 @@ Uses the same algorithm as java's default Random constructor."
     ([m f]
        (matrix (map f m)))
     ([m f a]
-       (clojure.core/map f (flatten m) a)))
+      ;; TODO: should have a fats Clatrix implementation
+      (matrix (mp/element-map (mp/convert-to-nested-vectors m) f a))))
 
   (element-map!
     ([m f] (map! f m)))
@@ -1858,7 +1859,10 @@ Uses the same algorithm as java's default Random constructor."
        (vector (clojure.core/mapv f m)))
     ([m f a]
        ;; TODO: make faster version, note clatrix overrides cljure.core/map
-       (vector (clojure.core/mapv f m (vector a)))))
+       (vector (mp/element-map (mp/convert-to-nested-vectors m) f a)))
+    ([m f a more]
+       ;; TODO: make faster version, note clatrix overrides cljure.core/map
+       (vector (apply mp/element-map (mp/convert-to-nested-vectors m) f a more))))
 
   (element-map! [m f]
     (map! f m))
