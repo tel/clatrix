@@ -1,4 +1,4 @@
-(defproject clatrix/clatrix "0.4.0"
+(defproject clatrix/clatrix "0.4.1-SNAPSHOT"
   :description "Because using matrices in Clojure needs to not suck."
   :url "http://tel.github.com/clatrix"
   :license {:name "MIT License"
