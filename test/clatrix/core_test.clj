@@ -42,6 +42,10 @@
 (expect Matrix M)
 (expect Vector V)
 
+(defmacro given [m [expect & terms]]
+  `(expect (more-> ~@(mapcat reverse (partition 2 terms)))
+           ~m))
+
 (given A
        (expect c/size [n m]
                c/matrix? true
@@ -410,23 +414,23 @@
 
 ;; Rank
 
-(given [matrix rank] (expect rank (c/rank (c/matrix matrix)))
-       [[1 2 3]
-        [1 2 3]] 1
-       [[1 2 3]
-        [3 4 5]] 2
-       [[1 2 1]
-        [-2 -3 1]
-        [3 5 0]] 2
-       [[1 1 1]
-        [0 1 1]] 2
-       [[1 1]
-        [0 1]
-        [0 1]] 2
-       [[1 2 3 4 5]
-        [0 1 2 3 4]
-        [0 0 1 2 3]
-        [0 0 2 4 6]
-        [0 0 0 0 0]] 3)
+(let [rnk (fn [m] (c/rank (c/matrix m)))]
+  (expect 1 (rnk [[1 2 3]
+                       [1 2 3]]))
+  (expect 2 (rnk [[1 2 3]
+                  [3 4 5]]))
+  (expect 2 (rnk [[1 2 1]
+                  [-2 -3 1]
+                  [3 5 0]]))
+  (expect 2 (rnk [[1 1 1]
+                  [0 1 1]]))
+  (expect 2 (rnk [[1 1]
+                  [0 1]
+                  [0 1]]))
+  (expect 3 (rnk [[1 2 3 4 5]
+                  [0 1 2 3 4]
+                  [0 0 1 2 3]
+                  [0 0 2 4 6]
+                  [0 0 0 0 0]])))
 
 
