@@ -277,6 +277,9 @@
 (expect (c/matrix [[0.5 1.0 1.5] [2.0 2.5 3.0]]) (c/div M 2))
 (expect (c/constant 2 3 1.0) (c/div M M))
 
+;; low arity finctions
+(expect A (c/+ A))
+
 ;; LU decomposition
 (let [lu (c/lu B)]
   (expect B (c/* (:p lu) (:l lu) (:u lu))))

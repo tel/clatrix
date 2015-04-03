@@ -982,6 +982,8 @@ Uses the same algorithm as java's default Random constructor."
 (defn +
   "`+` sums vectors and matrices (and scalars as if they were constant
   matrices). All the matrices must have the same size."
+  ([] 0)
+  ([a] a)
   ([a b] (cond (and (matrix? a) (matrix? b))
                (if (= (size a) (size b))
                  (matrix (dotom .add a ^DoubleMatrix (me b)))
