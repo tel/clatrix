@@ -982,6 +982,8 @@ Uses the same algorithm as java's default Random constructor."
 (defn +
   "`+` sums vectors and matrices (and scalars as if they were constant
   matrices). All the matrices must have the same size."
+  ([] 0)
+  ([a] a)
   ([a b] (cond (and (matrix? a) (matrix? b))
                (if (= (size a) (size b))
                  (matrix (dotom .add a ^DoubleMatrix (me b)))
@@ -1747,15 +1749,16 @@ Uses the same algorithm as java's default Random constructor."
   (svd [m options]
     (let [return (into #{} (:return options))]
       (cond
-       (= return #{:S}) {:S (:values (svd m :type :values))}
-       (not (empty? (clojure.set/intersection
-                     #{:U :S :V*} return)))
-       (let [{:keys [left right values]} (svd m)]
-         (select-keys {:U left
-                       :S values
-                       :V* right}
-                      return))
-       :else {})))
+       (= return #{:S}) 
+         {:S (:values (svd m :type :values))}
+       
+       :else 
+         (let [{:keys [left right values]} (svd m)
+               r (if (:U return) {:U left} {})
+               r (if (:S return) (merge r {:S values}) r)
+               r (if (:V return) (merge r {:V right}) r)
+               r (if (:V* return) (merge r {:V* (t right)}) r)]
+           r))))
 
   mp/PEigenDecomposition
   (eigen [m options]
