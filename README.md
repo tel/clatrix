@@ -7,6 +7,8 @@ speed. Being implemented as a Clojure sequence makes it clever.
 
 Clatrix works as an implementation of [core.matrix](http://github.com/mikera/core.matrix) so it is fully compatible with other libraries and tools that use the `core.matrix` API.
 
+[![Clojars Project](http://clojars.org/clatrix/latest-version.svg)](http://clojars.org/clatrix)
+
 ## Usage
 
 For now, you can read the

@@ -1,6 +1,7 @@
 (ns clatrix.core-test
   (:use expectations)
   (:require [clatrix.core :as c]
+            [clojure.core.matrix :as m]
             [criterium.core :as crit])
   (:import [clatrix.core Matrix Vector]
            [java.io StringReader PushbackReader]))
