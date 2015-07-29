@@ -4,7 +4,6 @@ before_install:
  - sudo apt-get update -qq
  - sudo apt-get install -qq libgfortran3
 script: lein2 expectations
-sudo: false
 jdk:
   - oraclejdk8
   - oraclejdk7
