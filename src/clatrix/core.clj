@@ -1194,7 +1194,7 @@ Uses the same algorithm as java's default Random constructor."
 (defn svd
   "`(svd A)` computes the sparse singular value decomposition of `A`
   returning a map with keys `{:values L :left U :right V}` such that
-  `A = U (diag L) V`. If `(size A)` is `[n m]` and k is (size L),
+  `A = U (diag L) (t V)`. If `(size A)` is `[n m]` and k is (size L),
   we have the size of `U` as `[n k]`, `(diag L)` as `[k k]`, and `(t V)`
   as `[k m]`. Rank is calculated as number of non-zero values in L.
   *eps* constant is used to check if value is zero.
