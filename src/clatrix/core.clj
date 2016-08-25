@@ -6,7 +6,7 @@
             [clojure.core.matrix.implementations :as imp])
   (:import [org.jblas DoubleMatrix ComplexDoubleMatrix ComplexDouble
             Decompose Decompose$LUDecomposition Eigen Solve Geometry
-            Singular MatrixFunctions]
+            Singular MatrixFunctions SimpleBlas]
            [org.jblas.util Random]
            [java.io Writer]))
 
@@ -1614,6 +1614,15 @@ Uses the same algorithm as java's default Random constructor."
     (i m))
   (negate [m]
     (* -1 m))
+
+  mp/PMatrixProducts
+  (inner-product [m a]
+    (m/mmul m a))
+  (outer-product [m a]
+    (let [mv (clatrix (m/to-vector m))
+          av (clatrix (m/to-vector a))
+          out (make-new-matrix [(m/ecount mv) (m/ecount av)])]
+      (SimpleBlas/ger (double 1.0) (me mv) (me av) (me out))))
   
   mp/PTranspose
   (transpose [m] (t m))
@@ -1904,6 +1913,17 @@ Uses the same algorithm as java's default Random constructor."
   (element-multiply [m a]
     (let [a (m/broadcast-coerce m a)]
       (mult m a)))
+
+  mp/PMatrixProducts
+  (inner-product [m a]
+    (if (vec? a)
+      (dot m a)
+      (m/mmul m a)))
+  (outer-product [m a]
+    (let [mv m
+          av (or (if (m/vec? a) a) (m/as-vector a))
+          out (make-new-matrix [(m/ecount mv) (m/ecount av)])]
+      (SimpleBlas/ger (double 1.0) (me mv) (me av) (me out))))
 
   mp/PVectorTransform
   (vector-transform [m v]

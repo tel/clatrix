@@ -7,6 +7,7 @@
            [java.io StringReader PushbackReader]))
 
 (def ^:dynamic *bench* false)
+(m/set-current-implementation :clatrix)
 
 (defn read* [str]
   (read (PushbackReader. (StringReader. str))))
@@ -26,7 +27,10 @@
 (def R (c/t (c/matrix (range m))))
 (def C (c/column (range n)))
 (def M (c/matrix [[1 2 3] [4 5 6]]))
+(def N (c/matrix [[1 2 3] [4 5 6] [7 8 9]]))
 (def V (c/vector [1 2 3]))
+(def o1 (c/vector [1 2]))
+(def o2 (c/vector [5 6]))
 (def ridx (range n))
 (def cidx (range m))
 
@@ -262,6 +266,22 @@
   (expect Ar (c/block [[r1]
                        [r2]
                        [r3]])))
+
+;; matrix products with vectors
+(expect (c/matrix [[5 6] [10 12]]) (m/outer-product o1 o2))
+(expect 17.0 (m/inner-product o1 o2))
+
+;; matrix products with matrices
+;; outer product of matrices is equivalent to outer product of the vectors
+;; induced by flattening the matrices
+(let [v (c/matrix (range 1 7))]
+  (expect (m/outer-product v v)
+          (m/outer-product M M)))
+;; inner product of matrices is the same as matrix multiplication
+;; except that M is not square (so we *should* get an exception)
+(expect clojure.lang.ExceptionInfo (m/inner-product M M))
+(expect (m/mmul N N) (m/inner-product N N))
+
 ;; linear algebra
 (expect A (c/- (c/+ A A) A))
 (expect [m m] (c/size (c/* (c/t A) A)))

@@ -6,7 +6,7 @@
   :resource-paths ["native"]
   :plugins [[lein-expectations "0.0.8"]]
 
-  :dependencies [[org.clojure/clojure "1.7.0-alpha6"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [slingshot "0.12.2"]
                  [org.jblas/jblas "1.2.3"]
                  [net.mikera/core.matrix "0.36.1"]]
