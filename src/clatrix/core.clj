@@ -399,7 +399,7 @@
   ([m meta-map]
     (Vector. (me (matrix m)) meta-map)))
 
-(defn clatrix 
+(defn clatrix
   "Coerces an arbitrary array to Clatrix format (a Matrix, a Vector or a number)"
   ([m]
     (cond
@@ -974,7 +974,7 @@ Uses the same algorithm as java's default Random constructor."
   "`normalize` normalizes a matrix as a single column or collection of
   column vectors."
   [mat & [flags]]
-  (cond 
+  (cond
     (vec? mat) (vector (dotom Geometry/normalize mat))
     (column? mat) (matrix (dotom Geometry/normalize mat))
     :else (matrix (dotom Geometry/normalizeColumns mat))))
@@ -1622,7 +1622,7 @@ Uses the same algorithm as java's default Random constructor."
     (let [mv (clatrix (m/to-vector m))
           av (clatrix (m/to-vector a))
           out (make-new-matrix [(m/ecount mv) (m/ecount av)])]
-      (SimpleBlas/ger (double 1.0) (me mv) (me av) (me out))))
+      (matrix (SimpleBlas/ger (double 1.0) (me mv) (me av) (me out)))))
   
   mp/PTranspose
   (transpose [m] (t m))
@@ -1923,7 +1923,7 @@ Uses the same algorithm as java's default Random constructor."
     (let [mv m
           av (or (if (m/vec? a) a) (m/as-vector a))
           out (make-new-matrix [(m/ecount mv) (m/ecount av)])]
-      (SimpleBlas/ger (double 1.0) (me mv) (me av) (me out))))
+      (matrix (SimpleBlas/ger (double 1.0) (me mv) (me av) (me out)))))
 
   mp/PVectorTransform
   (vector-transform [m v]
