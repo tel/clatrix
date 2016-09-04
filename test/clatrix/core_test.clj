@@ -267,20 +267,53 @@
                        [r2]
                        [r3]])))
 
-;; matrix products with vectors
-(expect (c/matrix [[5 6] [10 12]]) (m/outer-product o1 o2))
-(expect 17.0 (m/inner-product o1 o2))
+;; VV vector * vector
+;; SV scalar * vector
+;; VS vector* scalar
+;; VM vector * matrix
+;; MV matrix * vector
+;; MM matrix * matrix
 
-;; matrix products with matrices
-;; outer product of matrices is equivalent to outer product of the vectors
-;; induced by flattening the matrices
-(let [v (c/matrix (range 1 7))]
-  (expect (m/outer-product v v)
-          (m/outer-product M M)))
-;; inner product of matrices is the same as matrix multiplication
-;; except that M is not square (so we *should* get an exception)
-(expect clojure.lang.ExceptionInfo (m/inner-product M M))
-(expect (m/mmul N N) (m/inner-product N N))
+(def pvV (m/matrix :persistent-vector [1.0 2.0 3.0]))
+(def pvM (m/matrix :persistent-vector [[1.0 2.0 3.0]
+                                       [4.0 5.0 6.0]
+                                       [7.0 8.0 9.0]]))
+
+(defn reshape-pv-outer-product [a b M]
+  (let [[r _] (m/shape b)]
+    (reduce m/join (map #(apply m/join-along 1 %)
+                        (partition r (m/rows (m/rows M)))))))
+
+;; PMatrixProduct
+;; Compare the output with the persistent-vector implementation
+;; outer product / VV
+(expect (c/matrix [[5 6] [10 12]]) (m/outer-product o1 o2))
+(expect (m/outer-product pvV pvV) (m/outer-product V V))
+;; inner product / VV
+(expect 17.0 (m/inner-product o1 o2))
+(expect (m/inner-product pvV pvV) (m/inner-product V V))
+;; outer product / SV
+(expect (m/outer-product 3.0 pvV) (m/outer-product 3.0 V))
+;; inner product / SV
+(expect (m/inner-product 3.0 pvV) (m/inner-product 3.0 V))
+;; outer product / VS
+(expect (m/outer-product pvV 3.0) (m/outer-product V 3.0))
+;; inner product / VS
+(expect (m/inner-product pvV 3.0) (m/inner-product V 3.0))
+;; outer product / VM
+(expect (m/reshape (m/outer-product pvV pvM) [9 3]) (m/outer-product V N))
+;; inner product / VM
+(expect (m/inner-product pvV pvM) (m/inner-product V N))
+;; outer product / MV
+(expect (m/reshape (m/outer-product pvM pvV) [3 9]) (m/outer-product N V))
+;; inner product / MV
+(expect (m/inner-product pvM pvV) (m/inner-product N V))
+;; outer product / MM
+(expect (reshape-pv-outer-product pvM pvM (m/outer-product pvM pvM))
+        (m/outer-product N N))
+;; inner product / MM
+(expect (m/inner-product pvM pvM) (m/inner-product N N))
+
 
 ;; linear algebra
 (expect A (c/- (c/+ A A) A))
