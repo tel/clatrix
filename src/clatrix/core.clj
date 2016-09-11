@@ -1306,6 +1306,23 @@ Uses the same algorithm as java's default Random constructor."
         s (if (even? (n-perms p)) 1 -1)]
     (->> u diag (apply * s))))
 
+(declare make-new-matrix)
+
+(defn vector-inner-product
+  [va vb]
+  (assert (and (vec? va) (vec? vb)) "vector-inner-product requires 2 vectors.")
+  (dot va vb))
+
+(defn vector-outer-product
+  [va vb]
+  (assert (and (vec? va) (vec? vb)) "vector-outer-product requires 2 vectors.")
+  (let [[r] (m/shape va)
+        [c] (m/shape vb)
+        out (make-new-matrix [r c])
+        _ (SimpleBlas/ger (double 1.0) (me va) (me vb) (me out))]
+    out))
+
+
 ;;; # Printing the matrices
 ;;;
 ;;; When normally working with matrices in a REPL, it's huge mistake
@@ -1623,44 +1640,11 @@ Uses the same algorithm as java's default Random constructor."
   (outer-product [m a]
     (let [mdims (m/shape m)]
       (cond
-        (m/matrix? a)
-        (let [mv m
-              [r c] (m/shape a)
-              av (matrix a)
-              out (make-new-matrix [(* (mdims 0) r)
-                                    (* (mdims 1) c)])
-              blocks (mapv (fn [s] (SimpleBlas/scal (double s)
-                                                    (.dup (me av))))
-                          (m/eseq mv))
-              pairs (mapv clojure.core/vector blocks (mapv #(m/mul % [r c])
-                                                           (m/index-seq
-                                                             mv)))]
-          (let [^DoubleMatrix outm (me out)]
-            (doseq [[^DoubleMatrix b [i j]] pairs]
-              (.put outm
-                    (IntervalRange. i (+ i r))
-                    (IntervalRange. j (+ j c)) b))
-            out))
-        (m/vec? a)
-        (let [mv m
-              [sz] (m/shape a)
-              av (vector a)
-              out (make-new-matrix [(mdims 0) (* sz (mdims 1))])
-              ^DoubleMatrix avm (me av)
-              blocks (mapv (fn [s] (SimpleBlas/scal (double s)
-                                                    (.transpose (.dup avm))))
-                          (m/eseq mv))
-              pairs (mapv clojure.core/vector blocks (mapv #(m/mul % [1 sz])
-                                                           (m/index-seq mv)))]
-          (let [^DoubleMatrix outm (me out)]
-            (doseq [[^DoubleMatrix b [i j]] pairs]
-              (.put outm
-                    (IntervalRange. i (+ i 1))
-                    (IntervalRange. j (+ j sz)) b))
-            out))
+        (m/matrix? a) nil
+        (m/vec? a) nil
         (m/scalar? a) (m/scale m a)
         :else (throw (UnsupportedOperationException. "outer-product must have
-        a matrix or vector as argument")))))
+        a matrix, vector, or scalar as argument")))))
 
   mp/PTranspose
   (transpose [m] (t m))
@@ -1956,33 +1940,13 @@ Uses the same algorithm as java's default Random constructor."
   (inner-product [v a]
     (cond
       (number? a) (m/scale v a)
-      (vec? a) (dot v a)
+      (vec? a) (vector-inner-product v (vector a))
       (matrix? a) (m/mmul v a)))
   (outer-product [v a]
-    (let [[r] (m/shape v)]
-      (cond
-        (m/matrix? a)                                       ;; handle matrix
-        (let [av (matrix a)
-              [ar ac] (m/shape av)
-              out (make-new-matrix [(* r ar) ac])
-              outv (me out)
-              blocks (mapv (fn [s] (SimpleBlas/scal (double s) (.dup (me av))))
-                           (m/eseq v))
-              pairs (mapv clojure.core/vector blocks
-                          (mapv #(m/mul % ar) (m/index-seq v)))]
-          (doseq [[^DoubleMatrix b [i]] pairs]
-            (.put outv
-                  (IntervalRange. i (+ i ar))
-                  (IntervalRange. 0 ac) b))
-          out)
-        (m/vec? a)                                          ;; handle vector
-        (let [av (vector a)
-              [c] (m/shape a)
-              out (make-new-matrix [r c])
-              _ (SimpleBlas/ger (double 1.0) (me v) (me av) (me out))]
-          out)
-        (m/scalar? a)
-        (m/scale v a))))
+    (cond
+      (m/matrix? a) nil
+      (m/vec? a) (vector-outer-product v (vector a))
+      (m/scalar? a) (m/scale v a)))
 
   mp/PVectorTransform
   (vector-transform [m v]
